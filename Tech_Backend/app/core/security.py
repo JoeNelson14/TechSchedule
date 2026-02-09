@@ -1,9 +1,13 @@
 from datetime import datetime, timedelta, timezone
 from jose import jwt
 from passlib.context import CryptContext
+import os
+from dotenv import load_dotenv
+
+load_dotenv()  # Load environment variables from .env file
 
 # Security settings for the application
-SECRET_KEY = "CHANGE_THIS_IN_PRODUCTION"
+SECRET_KEY = os.getenv("SECRET_KEY", "your_default_secret_key_here")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
 

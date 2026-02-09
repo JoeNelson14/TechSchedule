@@ -1,10 +1,16 @@
-from dataclasses import dataclass
+from sqlalchemy import Column, Integer, String, DateTime
+from sqlalchemy.sql import func
+from app.core.database import Base
 
-# This is a simple User model. In a real application, you would likely want to use an ORM like SQLAlchemy to manage your database models,
-# and you would also want to include additional fields such as timestamps for when the user was created or last updated.
-@dataclass
-class User:
-    id: int
-    email: str
-    hashed_password: str
-    role: str # "admin" or "technician"
+# User model representing the users table in the database
+class User(Base):
+    # Define the name of the table in the database
+    __tablename__ = "users"
+
+    # Define the columns of the users table
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String, unique=True, index=True, nullable=False)
+    hashed_password = Column(String, nullable=False)
+    role = Column(String, default="user", nullable=False)  # Role can be 'technician' or 'admin'
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
