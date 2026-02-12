@@ -22,7 +22,13 @@ export const AuthProvider = ({ children }) => {
 
   //  Load user data on initial mount
   useEffect(() => {
-    loadUser();
+    const token = localStorage.getItem('access_token');
+
+    if (token) {
+      loadUser();
+    } else {
+      setLoading(false);
+    }
   }, []);
 
   // Login function to save the token and load user data
