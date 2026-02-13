@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 const Register = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState("user");
+  const [role, setRole] = useState("technician");
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -21,7 +21,7 @@ const Register = () => {
         <input className="w-full mb-3 p-2 border rounded" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
         <input className="w-full mb-3 p-2 border rounded" placeholder="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
         <select className="w-full mb-3 p-2 border rounded" value={role} onChange={(e) => setRole(e.target.value)}>
-          <option value="user">Admin</option>
+          <option value="admin">Admin</option>
           <option value="technician">Technician</option>
         </select>
         <button className="w-full bg-green-600 text-white p-2 rounded" type="submit">Register</button>
