@@ -25,6 +25,7 @@ const Register = () => {
           <option value="technician">Technician</option>
         </select>
         <button className="w-full bg-green-600 text-white p-2 rounded" type="submit">Register</button>
+        <button className="w-full bg-blue-700 text-white p-2 mt-3 rounded" type='button' onClick={() => navigate("/login")}>Back to Login</button>
       </form>
     </div>
   );

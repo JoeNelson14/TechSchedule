@@ -4,14 +4,37 @@ import Register from "../pages/Register";
 import AdminDashboard from "../pages/AdminDashboard";
 import TechnicianDashboard from "../pages/TechnicianDashboard";
 import RequireAuth from "../auth/RequireAuth";
+import Jobs from "../pages/Jobs";
+import CreateJob from "../pages/CreateJob";
+import Schedules from "../pages/Schedules";
 
 const AppRouter = () => {
   return (
     <BrowserRouter>
       <Routes>
         {/* Public Routes */}
+        <Route path="/" element={<Login />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+
+        {/* Job Routes */}
+        <Route path="/create-job" element={
+          <RequireAuth role="admin">
+            <CreateJob />
+          </RequireAuth>
+        } />
+        <Route path="/jobs" element={
+          <RequireAuth role= {["admin", "technician"]}>
+            <Jobs />
+          </RequireAuth>
+        } />
+
+        {/* Schedule Routes */}
+        <Route path="/schedules" element={
+          <RequireAuth role= {["admin", "technician"]}>
+            <Schedules />
+          </RequireAuth>
+        } />
 
        {/* Admin Routes */}
         <Route path="/admin" element={

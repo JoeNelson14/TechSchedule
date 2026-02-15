@@ -1,12 +1,12 @@
 import axios from 'axios';
 
 // Create an Axios instance with the base URL from environment variables
-const api = axios.create({
+const axiosApi = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
 });
 
 // Request interceptor to add the access token to headers
-api.interceptors.request.use(
+axiosApi.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('access_token');
     // If the token exists, add it to the Authorization header
@@ -20,7 +20,7 @@ api.interceptors.request.use(
 );
 
 // Response interceptor to handle 401 errors globally
-api.interceptors.response.use(
+axiosApi.interceptors.response.use(
   // If the response is successful, just return it
   (response) => response,
   // If there's an error, check if it's a 401 Unauthorized
@@ -33,4 +33,4 @@ api.interceptors.response.use(
   }
 );
 
-export default api;
+export default axiosApi;

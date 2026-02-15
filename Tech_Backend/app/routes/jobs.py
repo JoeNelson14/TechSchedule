@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.models.job import Job
+from app.models.user import User
 from app.schemas.job import JobCreate, JobUpdate, JobResponse
 
 # Define the API router for job-related endpoints
@@ -21,8 +22,13 @@ def create_job(job: JobCreate, db: Session = Depends(get_db), current_user = Dep
 # Endpoint to get all jobs
 @router.get("/", response_model=list[JobResponse])
 def get_jobs(db: Session = Depends(get_db), current_user = Depends(get_current_user)):
-    jobs = db.query(Job).all()
-    return jobs
+    
+    # Admins can see all jobs, while technicians can only see jobs assigned to them
+    if current_user.role == "admin":
+        return db.query(Job).all()
+    
+    if current_user.role == "technician":
+        return db.query(Job).filter(Job.assigned_to == current_user.id).all()
 
 # Endpoint to get a specific job by ID
 @router.get("/{job_id}", response_model=JobResponse)
@@ -56,3 +62,7 @@ def delete_job(job_id: int, db: Session = Depends(get_db), current_user = Depend
     db.delete(job)
     db.commit()
     return {"detail": "Job deleted successfully"}
+
+@router.get("/technicians")
+def get_technicians(db: Session = Depends(get_db)):
+    return db.query(User).filter(User.role == "technician").all()

@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.routes import auth, schedules, jobs
 from app.core.database import Base, engine
+from app.routes import users
 
 # Create the database tables based on the defined models
 Base.metadata.create_all(bind=engine)
@@ -33,6 +34,7 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(schedules.router)
 app.include_router(jobs.router)
+app.include_router(users.router)
 
 # Health check endpoint
 @app.get("/")

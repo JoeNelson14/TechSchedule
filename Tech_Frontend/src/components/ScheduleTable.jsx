@@ -1,5 +1,4 @@
 
-
 const ScheduleTable = ({ schedules }) => {
   return (
     <div className="overflow-x-auto bg-white shadow rounded">

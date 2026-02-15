@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { getSchedules } from "../api/schedules";
 import ScheduleTable from "../components/ScheduleTable";
+import LogoutButton from "../components/LogoutButton";
 
 const TechnicianDashboard = () => {
   const [schedules, setSchedules] = useState([]);
@@ -26,6 +27,7 @@ const TechnicianDashboard = () => {
   return (
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-4">Technician Dashboard</h1>
+      <LogoutButton />
       <ScheduleTable schedules={schedules} />
     </div>
   );

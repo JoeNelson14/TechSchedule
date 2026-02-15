@@ -25,7 +25,7 @@ def get_schedules(
     # Technicians can only see schedules assigned to them or unassigned
     if current_user.role == "technician":
         query = query.filter(
-            (Schedule.assigned_technician_id == current_user.id) | 
+            (Schedule.assigned_technician_id == current_user.id) |
             (Schedule.assigned_technician_id == None)
         )
     

@@ -27,6 +27,3 @@ class JobResponse(JobBase):
     assigned_to: Optional[int] = None
 
     model_config = ConfigDict(from_attributes=True)
-
-
-    # *********************** NEED TO GET CRUD TO WORK, NOT SHOWING UP IN /DOCS WHY? ***********************
