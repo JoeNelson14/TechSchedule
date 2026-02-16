@@ -7,8 +7,32 @@ export const getSchedules = async (params = {}) => {
   return response.data;
 };
 
-// New function to get schedules by date range
-export const getScheduleByDateRange = async (start_date, end_date) => {
+// Get a single schedule by ID
+export const getScheduleById = async (id) => {
+  const response = await api.get(`/schedules/${id}`);
+  return response.data;
+};
+
+// Create a new schedule (ADMIN ONLY)
+export const createSchedule = async (scheduleData) => {
+  const response = await api.post("/schedules", scheduleData);
+  return response.data;
+};
+
+// Update an existing schedule (ADMIN ONLY)
+export const updateSchedule = async (id, scheduleData) => {
+  const response = await api.put(`/schedules/${id}`, scheduleData);
+  return response.data;
+};
+
+// Delete a schedule (ADMIN ONLY)
+export const deleteSchedule = async (id) => {
+  const response = await api.delete(`/schedules/${id}`);
+  return response.data;
+};
+
+// Get schedules for a specific date range (ADMIN & TECHNICIAN)
+export const getSchedulesByDateRange = async (start_date, end_date) => {
   // start_date and end_date should be in YYYY-MM-DD format
   const response = await api.get("/schedules/date-range", {
     params: { start_date, end_date },
