@@ -1,14 +1,21 @@
 import { useEffect, useState } from "react";
-import { getSchedules, deleteSchedule } from "../api/schedules";
+import { getSchedules, deleteSchedule, updateScheduleStatus } from "../api/schedules";
 import { useAuth } from "../auth/useAuth";
+import { useNavigate } from "react-router-dom";
+import Modal from "../components/Modal";
+import EditScheduleForm from "../components/EditScheduleForm";
 
 const PAGE_SIZE = 10;
 
 const Schedules = () => {
-  const { isAdmin } = useAuth();
+  const { isAdmin, user } = useAuth();
+  const isTechnician = !isAdmin;
+
+  const navigate = useNavigate();
 
   const [schedules, setSchedules] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [editingSchedule, setEditingSchedule] = useState(null);
 
   const [statusFilter, setStatusFilter] = useState("");
   const [page, setPage] = useState(0);
@@ -16,12 +23,15 @@ const Schedules = () => {
   const fetchSchedules = async () => {
     setLoading(true);
     try {
-      const params = {skip: page * PAGE_SIZE, limit: PAGE_SIZE};
-      
-      if(statusFilter) params.status = statusFilter;
+      const params = {
+        skip: page * PAGE_SIZE,
+        limit: PAGE_SIZE,
+      };
+
+      if (statusFilter) params.status = statusFilter;
 
       const data = await getSchedules(params);
-      setSchedules(data);
+      setSchedules(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Error fetching schedules:", error);
     } finally {
@@ -31,10 +41,12 @@ const Schedules = () => {
 
   useEffect(() => {
     fetchSchedules();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, statusFilter]);
 
   const handleDelete = async (id) => {
     if (!isAdmin) return;
+
     const ok = window.confirm("Are you sure you want to delete this schedule?");
     if (!ok) return;
 
@@ -47,31 +59,41 @@ const Schedules = () => {
     }
   };
 
+  const handleStatusChange = async (scheduleId, newStatus) => {
+    try {
+      await updateScheduleStatus(scheduleId, newStatus);
+      fetchSchedules();
+    } catch (err) {
+      console.error("Failed to update status:", err);
+      alert("Failed to update schedule status.");
+    }
+  };
+
   return (
     <div className="p-6">
+      {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-bold">Schedules</h1>
 
-        {/* Admin-only button to Create Schedule */}
         {isAdmin && (
-          <button className="bg-blue-600 text-white px-4 py-2 rounded" onClick={() => alert("Next step: Create Schedule form")}>
+          <button className="bg-blue-600 text-white px-4 py-2 rounded" onClick={() => navigate("/admin/create-schedule")}>
             Create Schedule
           </button>
-        )}   
+        )}
       </div>
 
       {/* Filters */}
       <div className="flex items-center gap-3 mb-4">
-        <lable className="text-sm font-medium">Status</lable>
+        <label className="text-sm font-medium">Status</label>
         <select className="border rounded p-2" value={statusFilter} onChange={(e) => {
-          setPage(0);
-          setStatusFilter(e.target.value);
-        }}>
+            setPage(0);
+            setStatusFilter(e.target.value);
+          }}>
           <option value="">All</option>
           <option value="scheduled">Scheduled</option>
           <option value="in_progress">In Progress</option>
           <option value="completed">Completed</option>
-          <option value="canceled">Canceled</option>
+          <option value="cancelled">Cancelled</option>
         </select>
       </div>
 
@@ -90,34 +112,68 @@ const Schedules = () => {
                 <th className="px-4 py-3">Customer</th>
                 <th className="px-4 py-3">Vehicle</th>
                 <th className="px-4 py-3">Status</th>
-                {isAdmin && <th className="px-4 py-3">Actions</th>}
+                <th className="px-4 py-3">Actions</th>
               </tr>
             </thead>
-            <tbody>
-              {schedules.map((schedule) => (
-                <tr key={schedule.id} className="border-b">
-                  <td className="px-4 py-3">{
-                    schedule.scheduled_date
-                      ? new Date(schedule.scheduled_date).toLocaleString()
-                      : "-"
-                  }</td>
-                  <td className="px-4 py-3">{schedule.title}</td>
-                  <td className="px-4 py-3">{schedule.customer_name}</td>
-                  <td className="px-4 py-3">{schedule.vehicle_year} {schedule.vehicle_make} {schedule.vehicle_model}</td>
-                  <td className="px-4 py-3">{schedule.status}</td>
 
-                  {isAdmin && (
-                    <td className="px-4 py-3 space-x-2">
-                      <button className="bg-gray-700 text-white px-3 py-1 rounded" onClick={() => alert(`Next step: Edit Schedule ${schedule.id}`)}>
-                        Edit
-                      </button>
-                      <button className="bg-red-600 text-white px-3 py-1 rounded" onClick={() => handleDelete(schedule.id)}>
-                        Delete
-                      </button>
+            <tbody>
+              {schedules.map((schedule) => {
+                const assignedToMe = schedule.assigned_technician_id != null && user?.id != null && schedule.assigned_technician_id === user.id;
+
+                return (
+                  <tr key={schedule.id} className="border-b">
+                    <td className="px-4 py-3">
+                      {schedule.scheduled_date ? new Date(schedule.scheduled_date).toLocaleString() : "-"}
                     </td>
-                  )}
-                </tr>
-              ))}
+                    <td className="px-4 py-3">{schedule.title}</td>
+                    <td className="px-4 py-3">{schedule.customer_name}</td>
+                    <td className="px-4 py-3">
+                      {schedule.vehicle_year} {schedule.vehicle_make}{" "}
+                      {schedule.vehicle_model}
+                    </td>
+                    <td className="px-4 py-3">{schedule.status}</td>
+
+                    {/* Actions */}
+                    <td className="px-4 py-3 space-x-2">
+                      {isAdmin ? (
+                        <>
+                          <button className="bg-gray-700 text-white px-3 py-1 rounded" onClick={() => setEditingSchedule(schedule)}>
+                            Edit
+                          </button>
+                          <button className="bg-red-600 text-white px-3 py-1 rounded" onClick={() => handleDelete(schedule.id)}>
+                            Delete
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          {!assignedToMe ? (
+                            <span className="text-gray-500">Not assigned</span>
+                          ) : (
+                            <>
+                              {schedule.status === "scheduled" && (
+                                <button className="bg-yellow-500 text-white px-3 py-1 rounded" onClick={() => handleStatusChange(schedule.id, "in_progress")}>
+                                  Start
+                                </button>
+                              )}
+
+                              {schedule.status === "in_progress" && (
+                                <button  className="bg-green-600 text-white px-3 py-1 rounded" onClick={() => handleStatusChange(schedule.id, "completed")}>
+                                  Complete
+                                </button>
+                              )}
+
+                              {(schedule.status === "completed" ||
+                                schedule.status === "cancelled") && (
+                                <span className="text-gray-500">—</span>
+                              )}
+                            </>
+                          )}
+                        </>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}
@@ -125,7 +181,7 @@ const Schedules = () => {
 
       {/* Pagination */}
       <div className="flex items-center justify-between mt-4">
-        <button className="bg-gray-300 text-gray-700 px-3 py-1 rounded" onClick={() => setPage((prev) => Math.max(0, prev - 1))} disabled={page === 0 || loading}>
+        <button className="bg-gray-300 text-gray-700 px-3 py-1 rounded disabled:opacity-50" onClick={() => setPage((prev) => Math.max(0, prev - 1))} disabled={page === 0 || loading}>
           Prev
         </button>
 
@@ -135,8 +191,20 @@ const Schedules = () => {
           Next
         </button>
       </div>
+
+      {/* Edit Modal (Admin only) */}
+      {isAdmin && editingSchedule && (
+        <Modal title={`Edit Schedule #${editingSchedule.id}`} onClose={() => setEditingSchedule(null)}>
+          <EditScheduleForm schedule={editingSchedule} onCancel={() => setEditingSchedule(null)} onSaved={() => {
+              setEditingSchedule(null);
+              fetchSchedules();
+            }}/>
+        </Modal>
+      )}
     </div>
   );
 };
 
 export default Schedules;
+
+// NEED TO SETT IS START BUTTON AS TECH WORKS NOW OR NOT.

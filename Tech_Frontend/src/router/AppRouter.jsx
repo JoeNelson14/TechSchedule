@@ -7,6 +7,7 @@ import RequireAuth from "../auth/RequireAuth";
 import Jobs from "../pages/Jobs";
 import CreateJob from "../pages/CreateJob";
 import Schedules from "../pages/Schedules";
+import CreateSchedule from "../pages/CreateSchedule";
 
 const AppRouter = () => {
   return (
@@ -33,6 +34,11 @@ const AppRouter = () => {
         <Route path="/schedules" element={
           <RequireAuth role= {["admin", "technician"]}>
             <Schedules />
+          </RequireAuth>
+        } />
+        <Route path="/admin/create-schedule" element={
+          <RequireAuth role="admin">
+            <CreateSchedule />
           </RequireAuth>
         } />
 

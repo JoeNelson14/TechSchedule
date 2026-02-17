@@ -7,7 +7,7 @@ from app.core.database import get_db
 from app.core.dependencies import get_current_user, require_admin
 from app.models.user import User
 from app.models.schedule import Schedule
-from app.schemas.schedule import ScheduleCreate, ScheduleUpdate, ScheduleResponse
+from app.schemas.schedule import ScheduleCreate, ScheduleUpdate, ScheduleResponse, ScheduleStatusUpdate
 
 router = APIRouter(prefix="/schedules", tags=["schedules"])
 
@@ -147,3 +147,24 @@ def get_schedules_by_date_range(
     
     schedules = query.all()
     return schedules
+
+# Update schedule status (technician can update their own schedules, admin can update any)
+@router.patch("/{schedule_id}/status", response_model=ScheduleResponse)
+def update_schedule_status(schedule_id: int, payload: ScheduleStatusUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    db_schedule = db.query(Schedule).filter(Schedule.id == schedule_id).first()
+    
+    if not db_schedule:
+        raise HTTPException(status_code=404, detail="Schedule not found")
+    
+    # Only assigned technician or admin can update status
+    if current_user.role == "technician":
+        if db_schedule.assigned_technician_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Access denied")
+    
+    db_schedule.status = payload.status
+    if payload.notes is not None:
+        db_schedule.notes = payload.notes
+    db.commit()
+    db.refresh(db_schedule)
+    
+    return db_schedule

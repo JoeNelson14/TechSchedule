@@ -25,7 +25,7 @@ axiosApi.interceptors.response.use(
   (response) => response,
   // If there's an error, check if it's a 401 Unauthorized
   (error) => {
-    if (error.response.status === 401) {
+    if (error.response?.status === 401) {
       localStorage.removeItem('access_token');
       window.location.href = '/login';
     }

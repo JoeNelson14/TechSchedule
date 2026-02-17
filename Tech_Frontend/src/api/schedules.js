@@ -3,7 +3,7 @@ import api from "./axios";
 //  Get all schedules with optional filters
 export const getSchedules = async (params = {}) => {
   //  params can include: technician_id, date, status
-  const response = await api.get("/schedules", { params });
+  const response = await api.get("/schedules/", { params });
   return response.data;
 };
 
@@ -15,7 +15,7 @@ export const getScheduleById = async (id) => {
 
 // Create a new schedule (ADMIN ONLY)
 export const createSchedule = async (scheduleData) => {
-  const response = await api.post("/schedules", scheduleData);
+  const response = await api.post("/schedules/", scheduleData);
   return response.data;
 };
 
@@ -34,8 +34,14 @@ export const deleteSchedule = async (id) => {
 // Get schedules for a specific date range (ADMIN & TECHNICIAN)
 export const getSchedulesByDateRange = async (start_date, end_date) => {
   // start_date and end_date should be in YYYY-MM-DD format
-  const response = await api.get("/schedules/date-range", {
+  const response = await api.get("/schedules/date-range/", {
     params: { start_date, end_date },
   });
+  return response.data;
+};
+
+// Update schedule status (TECHNICIAN ONLY)
+export const updateScheduleStatus = async (id, status) => {
+  const response = await api.patch(`/schedules/${id}/status`, { status });
   return response.data;
 };
