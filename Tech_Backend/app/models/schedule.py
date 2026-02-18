@@ -24,5 +24,8 @@ class Schedule(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     notes = Column(Text, nullable=True)
 
+    job_id = Column(Integer, ForeignKey("jobs.id"), nullable=False)
+
     assigned_technician = relationship("User", foreign_keys=[assigned_technician_id])
     created_by = relationship("User", foreign_keys=[created_by_id])
+    job = relationship("Job")

@@ -4,7 +4,6 @@ from typing import Optional
 
 #  Base schema for schedule creation and updates
 class ScheduleBase(BaseModel):
-    title: str
     description: Optional[str] = None
 
     customer_name: str
@@ -18,6 +17,8 @@ class ScheduleBase(BaseModel):
     scheduled_date: Optional[datetime] = None
     duration_minutes: Optional[int] = 60
     status: str = "scheduled"
+
+    job_id: int
 
     assigned_technician_id: Optional[int] = None
     notes: Optional[str] = None

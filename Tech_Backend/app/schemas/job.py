@@ -5,7 +5,7 @@ from typing import Optional
 class JobBase(BaseModel):
     title: str
     description: Optional[str] = None
-    assigned_to: Optional[int] = None
+    default_duration_minutes: int = 60
 
 # Schema for creating a new Job
 class JobCreate(JobBase):
@@ -15,15 +15,9 @@ class JobCreate(JobBase):
 class JobUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
-    status: Optional[str] = None
-    assigned_to: Optional[int] = None
+    default_duration_minutes: int
 
 # Schema for responding with Job data
 class JobResponse(JobBase):
     id: int
-    title: str
-    description: Optional[str] = None
-    status: str
-    assigned_to: Optional[int] = None
-
     model_config = ConfigDict(from_attributes=True)

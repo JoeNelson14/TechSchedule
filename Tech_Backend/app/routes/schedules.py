@@ -7,6 +7,7 @@ from app.core.database import get_db
 from app.core.dependencies import get_current_user, require_admin
 from app.models.user import User
 from app.models.schedule import Schedule
+from app.models.job import Job
 from app.schemas.schedule import ScheduleCreate, ScheduleUpdate, ScheduleResponse, ScheduleStatusUpdate
 
 router = APIRouter(prefix="/schedules", tags=["schedules"])
@@ -66,9 +67,15 @@ def create_schedule(
         technician = db.query(User).filter(User.id == schedule.assigned_technician_id).first()
         if not technician:
             raise HTTPException(status_code=404, detail="Assigned technician not found")
+        job = db.query(Job).filter(Job.id == schedule.job_id).first()
+        if not job:
+            raise HTTPException(status_code=404, detail="Job not found")
     
     db_schedule = Schedule(
         **schedule.model_dump(),
+        title=job.title,
+        description=schedule.description or job.description, # allows override if you want
+        duration_minutes=schedule.duration_minutes or job.default_duration_minutes,
         created_by_id=current_user.id
     )
     
