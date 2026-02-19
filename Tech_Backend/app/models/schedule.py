@@ -7,6 +7,7 @@ class Schedule(Base):
     __tablename__ = "schedules"
 
     id = Column(Integer, primary_key=True, index=True)
+    ro_number = Column(Integer, unique=True, index=True, nullable=False)
     title = Column(String, nullable=False)
     description = Column(Text, nullable=True)
     customer_name = Column(String, nullable=False)
@@ -17,7 +18,7 @@ class Schedule(Base):
     vehicle_year = Column(Integer, nullable=False)
     scheduled_date = Column(DateTime(timezone=True), nullable=True)
     duration_minutes = Column(Integer,default=60, nullable=True)
-    status = Column(String, default="scheduled")  # scheduled, in_progress, completed, cancelled
+    status = Column(String, default="active")  # active, in_progress, approval, repair
     assigned_technician_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     created_by_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -25,6 +26,7 @@ class Schedule(Base):
     notes = Column(Text, nullable=True)
 
     job_id = Column(Integer, ForeignKey("jobs.id"), nullable=False)
+    recommended_repairs = Column(Text, nullable=True)
 
     assigned_technician = relationship("User", foreign_keys=[assigned_technician_id])
     created_by = relationship("User", foreign_keys=[created_by_id])

@@ -102,6 +102,7 @@ const CreateSchedule = () => {
     try {
       if (!jobId) {
         alert("Please select a job.");
+        setSubmitting(false);
         return;
       }
 

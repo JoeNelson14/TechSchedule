@@ -45,3 +45,17 @@ export const updateScheduleStatus = async (id, status) => {
   const response = await api.patch(`/schedules/${id}/status`, { status });
   return response.data;
 };
+
+// Get today's schedules (ADMIN & TECHNICIAN)
+export const getTodaySchedules = async () => {
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+
+  const end = new Date();
+  end.setHours(23, 59, 59, 999);
+
+  const response = await api.get("/schedules/date-range/", {
+    params: { start_date: start.toISOString(), end_date: end.toISOString() },
+  });
+  return response.data;
+};

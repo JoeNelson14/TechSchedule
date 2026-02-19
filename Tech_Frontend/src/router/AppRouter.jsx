@@ -8,13 +8,14 @@ import Jobs from "../pages/Jobs";
 import CreateJob from "../pages/CreateJob";
 import Schedules from "../pages/Schedules";
 import CreateSchedule from "../pages/CreateSchedule";
+import Landing from "../pages/Landing";
 
 const AppRouter = () => {
   return (
     <BrowserRouter>
       <Routes>
         {/* Public Routes */}
-        <Route path="/" element={<Login />} />
+        <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
 

@@ -9,7 +9,6 @@ const PAGE_SIZE = 10;
 
 const Schedules = () => {
   const { isAdmin, user } = useAuth();
-  const isTechnician = !isAdmin;
 
   const navigate = useNavigate();
 
@@ -107,6 +106,7 @@ const Schedules = () => {
           <table className="min-w-full text-sm text-left">
             <thead className="bg-gray-200 text-gray-700 uppercase text-xs">
               <tr>
+                <th className="px-4 py-3">RO</th>
                 <th className="px-4 py-3">Date</th>
                 <th className="px-4 py-3">Title</th>
                 <th className="px-4 py-3">Customer</th>
@@ -122,6 +122,7 @@ const Schedules = () => {
 
                 return (
                   <tr key={schedule.id} className="border-b">
+                    <td className="px-4 py-3">{schedule.ro_number}</td>
                     <td className="px-4 py-3">
                       {schedule.scheduled_date ? new Date(schedule.scheduled_date).toLocaleString() : "-"}
                     </td>
