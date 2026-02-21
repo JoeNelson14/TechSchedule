@@ -1,15 +1,20 @@
 import { useEffect, useState } from "react";
-import { getSchedules, deleteSchedule, updateScheduleStatus } from "../api/schedules";
+import {
+  getSchedules,
+  deleteSchedule,
+  acceptSchedule,
+  techUpdateSchedule,
+} from "../api/schedules";
 import { useAuth } from "../auth/useAuth";
 import { useNavigate } from "react-router-dom";
 import Modal from "../components/Modal";
 import EditScheduleForm from "../components/EditScheduleForm";
+import AppNav from "../components/AppNav";
 
 const PAGE_SIZE = 10;
 
 const Schedules = () => {
   const { isAdmin, user } = useAuth();
-
   const navigate = useNavigate();
 
   const [schedules, setSchedules] = useState([]);
@@ -43,6 +48,7 @@ const Schedules = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, statusFilter]);
 
+  // Handle admin deleting a schedule
   const handleDelete = async (id) => {
     if (!isAdmin) return;
 
@@ -58,24 +64,41 @@ const Schedules = () => {
     }
   };
 
-  const handleStatusChange = async (scheduleId, newStatus) => {
+  // Handle technician accepting an active schedule, moving it to in_progress
+  const handleAccept = async (scheduleId) => {
     try {
-      await updateScheduleStatus(scheduleId, newStatus);
+      await acceptSchedule(scheduleId);
       fetchSchedules();
     } catch (err) {
-      console.error("Failed to update status:", err);
-      alert("Failed to update schedule status.");
+      console.error("Accept failed:", err);
+      alert("Failed to accept this RO.");
+    }
+  };
+
+  // Handle status updates for technicians (send to approval, move to repair, complete)
+  const handleMove = async (scheduleId, status) => {
+    try {
+      await techUpdateSchedule(scheduleId, { status });
+      fetchSchedules();
+    } catch (err) {
+      console.error("Failed to update RO:", err);
+      alert("Failed to update RO.");
     }
   };
 
   return (
-    <div className="p-6">
+    <div className="max-w-6xl mx-auto px-4 py-6 space-y-5">
+      <AppNav />
+
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-bold">Schedules</h1>
 
         {isAdmin && (
-          <button className="bg-blue-600 text-white px-4 py-2 rounded" onClick={() => navigate("/admin/create-schedule")}>
+          <button
+            className="bg-blue-600 text-white px-4 py-2 rounded"
+            onClick={() => navigate("/admin/create-schedule")}
+          >
             Create Schedule
           </button>
         )}
@@ -84,15 +107,20 @@ const Schedules = () => {
       {/* Filters */}
       <div className="flex items-center gap-3 mb-4">
         <label className="text-sm font-medium">Status</label>
-        <select className="border rounded p-2" value={statusFilter} onChange={(e) => {
+        <select
+          className="border rounded p-2"
+          value={statusFilter}
+          onChange={(e) => {
             setPage(0);
             setStatusFilter(e.target.value);
-          }}>
+          }}
+        >
           <option value="">All</option>
-          <option value="scheduled">Scheduled</option>
+          <option value="active">Active</option>
           <option value="in_progress">In Progress</option>
+          <option value="approval">Approval</option>
+          <option value="repair">Repair</option>
           <option value="completed">Completed</option>
-          <option value="cancelled">Cancelled</option>
         </select>
       </div>
 
@@ -118,13 +146,21 @@ const Schedules = () => {
 
             <tbody>
               {schedules.map((schedule) => {
-                const assignedToMe = schedule.assigned_technician_id != null && user?.id != null && schedule.assigned_technician_id === user.id;
+                const assignedToMe =
+                  schedule.assigned_technician_id != null &&
+                  user?.id != null &&
+                  Number(schedule.assigned_technician_id) === Number(user.id);
+
+                const assignedToAnotherTech =
+                  schedule.assigned_technician_id != null && !assignedToMe;
 
                 return (
                   <tr key={schedule.id} className="border-b">
                     <td className="px-4 py-3">{schedule.ro_number}</td>
                     <td className="px-4 py-3">
-                      {schedule.scheduled_date ? new Date(schedule.scheduled_date).toLocaleString() : "-"}
+                      {schedule.scheduled_date
+                        ? new Date(schedule.scheduled_date).toLocaleString()
+                        : "-"}
                     </td>
                     <td className="px-4 py-3">{schedule.title}</td>
                     <td className="px-4 py-3">{schedule.customer_name}</td>
@@ -138,36 +174,43 @@ const Schedules = () => {
                     <td className="px-4 py-3 space-x-2">
                       {isAdmin ? (
                         <>
-                          <button className="bg-gray-700 text-white px-3 py-1 rounded" onClick={() => setEditingSchedule(schedule)}>
-                            Edit
-                          </button>
-                          <button className="bg-red-600 text-white px-3 py-1 rounded" onClick={() => handleDelete(schedule.id)}>
-                            Delete
-                          </button>
+                          <button className="bg-gray-700 text-white px-3 py-1 rounded" onClick={() => setEditingSchedule(schedule)}>Edit</button>
+                          <button className="bg-red-600 text-white px-3 py-1 rounded" onClick={() => handleDelete(schedule.id)}>Delete</button>
                         </>
                       ) : (
                         <>
-                          {!assignedToMe ? (
-                            <span className="text-gray-500">Not assigned</span>
-                          ) : (
+                          {/* TECH ACTIONS */}
+                          {schedule.status === "active" ? (
+                            assignedToAnotherTech ? (
+                              <span className="text-gray-500">Assigned to another tech</span>
+                            ) : (
+                              <button className="bg-emerald-600 text-white px-3 py-1 rounded" onClick={() => handleAccept(schedule.id)}>Accept</button>
+                            )
+                          ) : assignedToMe ? (
                             <>
-                              {schedule.status === "scheduled" && (
-                                <button className="bg-yellow-500 text-white px-3 py-1 rounded" onClick={() => handleStatusChange(schedule.id, "in_progress")}>
-                                  Start
-                                </button>
-                              )}
-
                               {schedule.status === "in_progress" && (
-                                <button  className="bg-green-600 text-white px-3 py-1 rounded" onClick={() => handleStatusChange(schedule.id, "completed")}>
-                                  Complete
-                                </button>
+                                <>
+                                  <button className="bg-gray-900 text-white px-3 py-1 rounded" onClick={() => handleMove(schedule.id, "approval")} title="Sends RO to approval (auto-completes if no recommended repairs)">Send to Approval</button>
+                                  <button className="bg-green-600 text-white px-3 py-1 rounded" onClick={() => handleMove(schedule.id, "completed")}>Complete</button>
+                                </>
                               )}
 
-                              {(schedule.status === "completed" ||
-                                schedule.status === "cancelled") && (
+                              {schedule.status === "approval" && (
+                                <button className="bg-purple-600 text-white px-3 py-1 rounded" onClick={() => handleMove(schedule.id, "repair")}>Move to Repair</button>
+                              )}
+
+                              {schedule.status === "repair" && (
+                                <button className="bg-green-600 text-white px-3 py-1 rounded" onClick={() => handleMove(schedule.id, "completed")}>Complete</button>
+                              )}
+
+                              {schedule.status === "completed" && (
                                 <span className="text-gray-500">—</span>
                               )}
                             </>
+                          ) : (
+                            <span className="text-gray-500">
+                              Assigned to another tech
+                            </span>
                           )}
                         </>
                       )}
@@ -182,24 +225,24 @@ const Schedules = () => {
 
       {/* Pagination */}
       <div className="flex items-center justify-between mt-4">
-        <button className="bg-gray-300 text-gray-700 px-3 py-1 rounded disabled:opacity-50" onClick={() => setPage((prev) => Math.max(0, prev - 1))} disabled={page === 0 || loading}>
-          Prev
-        </button>
+        <button className="bg-gray-300 text-gray-700 px-3 py-1 rounded disabled:opacity-50" onClick={() => setPage((prev) => Math.max(0, prev - 1))} disabled={page === 0 || loading}>Prev</button>
 
         <div className="text-sm">Page {page + 1}</div>
 
-        <button className="border px-3 py-2 rounded disabled:opacity-50" disabled={loading || schedules.length < PAGE_SIZE} onClick={() => setPage((prev) => prev + 1)}>
-          Next
-        </button>
+        <button className="border px-3 py-2 rounded disabled:opacity-50" disabled={loading || schedules.length < PAGE_SIZE} onClick={() => setPage((prev) => prev + 1)}>Next</button>
       </div>
 
       {/* Edit Modal (Admin only) */}
       {isAdmin && editingSchedule && (
         <Modal title={`Edit Schedule #${editingSchedule.id}`} onClose={() => setEditingSchedule(null)}>
-          <EditScheduleForm schedule={editingSchedule} onCancel={() => setEditingSchedule(null)} onSaved={() => {
+          <EditScheduleForm
+            schedule={editingSchedule}
+            onCancel={() => setEditingSchedule(null)}
+            onSaved={() => {
               setEditingSchedule(null);
               fetchSchedules();
-            }}/>
+            }}
+/>
         </Modal>
       )}
     </div>
@@ -207,5 +250,3 @@ const Schedules = () => {
 };
 
 export default Schedules;
-
-// NEED TO SETT IS START BUTTON AS TECH WORKS NOW OR NOT.

@@ -2,12 +2,13 @@ import { useEffect, useState } from "react";
 import { useAuth } from "../auth/useAuth";
 import Modal from "../components/Modal";
 import { getJobs, createJob, updateJob, deleteJob } from "../api/jobApi";
+import AppNav from "../components/AppNav";
 
 // Form state for create/edit
 const emptyForm = {
   title: "",
   description: "",
-  default_duration_minutes: 60,
+  default_duration_hours: 1,
 };
 
 // Jobs page component
@@ -52,7 +53,7 @@ const Jobs = () => {
     setForm({
       title: job.title ?? "",
       description: job.description ?? "",
-      default_duration_minutes: job.default_duration_minutes ?? 60,
+      default_duration_hours: job.default_duration_hours ?? 1,
     });
   };
 
@@ -79,7 +80,7 @@ const Jobs = () => {
       await createJob({
         title: form.title.trim(),
         description: form.description.trim() || null,
-        default_duration_minutes: Number(form.default_duration_minutes),
+        default_duration_hours: Number(form.default_duration_hours),
       });
       closeModals();
       fetchJobs();
@@ -100,7 +101,7 @@ const Jobs = () => {
       await updateJob(editingJob.id, {
         title: form.title.trim(),
         description: form.description.trim() || null,
-        default_duration_minutes: Number(form.default_duration_minutes),
+        default_duration_hours: Number(form.default_duration_hours),
       });
       closeModals();
       fetchJobs();
@@ -128,9 +129,10 @@ const Jobs = () => {
   };
 
   return (
-    <div className="p-6">
+    <div className="max-w-6xl mx-auto px-4 py-6 space-y-5">
+      <AppNav />
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-4 mt-4">
         <h1 className="text-2xl font-bold">Service Catalog</h1>
 
         {isAdmin && (
@@ -151,7 +153,7 @@ const Jobs = () => {
             <thead className="bg-gray-200 text-gray-700 uppercase text-xs">
               <tr>
                 <th className="px-4 py-3">Title</th>
-                <th className="px-4 py-3">Default Duration</th>
+                <th className="px-4 py-3">Duration (hours)</th>
                 <th className="px-4 py-3">Description</th>
                 <th className="px-4 py-3">Actions</th>
               </tr>
@@ -161,24 +163,18 @@ const Jobs = () => {
                 <tr key={job.id} className="border-b">
                   <td className="px-4 py-3 font-medium">{job.title}</td>
                   <td className="px-4 py-3">
-                    {job.default_duration_minutes ?? 60} min
+                    {job.default_duration_hours ?? 1} hr
                   </td>
                   <td className="px-4 py-3 text-gray-700">
                     {job.description || <span className="text-gray-400">—</span>}
                   </td>
                   <td className="px-4 py-3 space-x-2">
-                    <button className="border px-3 py-1 rounded" onClick={() => openEdit(job)}>
-                      View
-                    </button>
+                    <button className="border px-3 py-1 rounded" onClick={() => openEdit(job)}>View</button>
 
                     {isAdmin && (
                       <>
-                        <button className="bg-gray-700 text-white px-3 py-1 rounded" onClick={() => openEdit(job)}>
-                          Edit
-                        </button>
-                        <button className="bg-red-600 text-white px-3 py-1 rounded" onClick={() => handleDelete(job.id)}>
-                          Delete
-                        </button>
+                        <button className="bg-gray-700 text-white px-3 py-1 rounded" onClick={() => openEdit(job)}>Edit</button>
+                        <button className="bg-red-600 text-white px-3 py-1 rounded" onClick={() => handleDelete(job.id)}>Delete</button>
                       </>
                     )}
                   </td>
@@ -216,9 +212,9 @@ const JobForm = ({form, onChange, onSubmit, onCancel, saving, submitLabel, readO
 
       <div>
         <label className="block text-sm font-medium mb-1">
-          Default Duration (minutes)
+          Duration (hours)
         </label>
-        <input className="border rounded p-2 w-full" type="number" min="15" step="15" value={form.default_duration_minutes} onChange={(e) => onChange("default_duration_minutes", e.target.value)} required disabled={readOnly}/>
+        <input className="border rounded p-2 w-full" type="number" min="0" step="0.1" value={form.default_duration_hours} onChange={(e) => onChange("default_duration_hours", e.target.value)} required disabled={readOnly}/>
       </div>
 
       <div>
@@ -230,9 +226,7 @@ const JobForm = ({form, onChange, onSubmit, onCancel, saving, submitLabel, readO
       {readOnly ? (
         // Technician view: only one Close button
         <div className="flex items-center gap-3">
-          <button type="button" onClick={onCancel} className="border px-4 py-2 rounded">
-            Close
-          </button>
+          <button type="button" onClick={onCancel} className="border px-4 py-2 rounded">Close</button>
         </div>
       ) : (
         // Admin view: Save + Cancel
@@ -241,9 +235,7 @@ const JobForm = ({form, onChange, onSubmit, onCancel, saving, submitLabel, readO
             {saving ? "Saving..." : submitLabel}
           </button>
 
-          <button type="button" onClick={onCancel} disabled={saving} className="border px-4 py-2 rounded">
-            Cancel
-          </button>
+          <button type="button" onClick={onCancel} disabled={saving} className="border px-4 py-2 rounded">Cancel</button>
         </div>
       )}
     </form>

@@ -40,22 +40,53 @@ export const getSchedulesByDateRange = async (start_date, end_date) => {
   return response.data;
 };
 
-// Update schedule status (TECHNICIAN ONLY)
-export const updateScheduleStatus = async (id, status) => {
-  const response = await api.patch(`/schedules/${id}/status`, { status });
+// Get schedule details by RO number (ADMIN & TECHNICIAN)
+export const getScheduleByRoNumber = async (roNumber) => {
+  const response = await api.get(`/schedules/repair-order/${roNumber}`);
   return response.data;
 };
 
-// Get today's schedules (ADMIN & TECHNICIAN)
-export const getTodaySchedules = async () => {
-  const start = new Date();
-  start.setHours(0, 0, 0, 0);
+// Admin approves a schedule that's waiting for approval, moving it to repair
+export const addRecommendedJob = async (scheduleId, payload) => {
+  const response = await api.post(`/schedules/${scheduleId}/recommended-jobs/`, payload);
+  return response.data;
+}
+// Admin removes a recommended job from a schedule
+export const removeRecommendedJob = async (scheduleId, recId) => {
+  const response = await api.delete(`/schedules/${scheduleId}/recommended-jobs/${recId}`);
+  return response.data;
+}
 
-  const end = new Date();
-  end.setHours(23, 59, 59, 999);
-
-  const response = await api.get("/schedules/date-range/", {
-    params: { start_date: start.toISOString(), end_date: end.toISOString() },
-  });
+/**
+ * Technician workflow (new lifecycle)
+ * Status lifecycle:
+ * active -> in_progress -> (approval -> repair) -> completed
+ * Special rule: in_progress -> approval auto-completes if no recommended repairs.
+ */
+// Technician accepts an active schedule, moving it to in_progress
+export const acceptSchedule = async (id) => {
+  const response = await api.post(`/schedules/${id}/accept`);
   return response.data;
 };
+// Technician marks an in_progress schedule as completed (with optional recommended repairs)
+export const techUpdateSchedule = async (id, payload) => {
+  const response = await api.patch(`/schedules/${id}/tech`, payload);
+  return response.data;
+};
+
+/**
+ * Dashboard (single endpoint)
+ * Returns:
+ * {
+ *   active_all: [...],
+ *   in_progress_mine: [...],
+ *   approval_mine: [...],
+ *   repair_mine: [...],
+ *   completed_mine: [...]
+ * }
+ */
+// Get categorized schedules for dashboard view
+export const getDashboardSchedules = async (params) => {
+  const response = await api.get("/schedules/dashboard", { params });
+  return response.data;
+}

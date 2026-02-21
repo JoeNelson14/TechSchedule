@@ -1,6 +1,7 @@
 from pydantic import BaseModel, ConfigDict, EmailStr
 from datetime import datetime
-from typing import Optional, Literal
+from typing import List, Optional, Literal
+from app.schemas.recommended_job import RecommendedJobResponse
 
 #  Base schema for schedule creation and updates
 class ScheduleBase(BaseModel):
@@ -16,12 +17,14 @@ class ScheduleBase(BaseModel):
     vehicle_year: int
 
     scheduled_date: Optional[datetime] = None
-    duration_minutes: Optional[int] = 60
+    duration_hours: float | None = None
     status: Literal["active", "in_progress", "approval", "repair", "completed"] = "active"
 
     assigned_technician_id: Optional[int] = None
     recommended_repairs: Optional[str] = None
     notes: Optional[str] = None
+
+    model_config = ConfigDict(extra="forbid")
 
 class ScheduleCreate(ScheduleBase):
     pass
@@ -40,14 +43,12 @@ class ScheduleUpdate(BaseModel):
     vehicle_year: Optional[int] = None
 
     scheduled_date: Optional[datetime] = None
-    duration_minutes: Optional[int] = 60
+    duration_hours: float | None = None
     status: Optional[Literal["active", "in_progress", "approval", "repair", "completed"]] = None
 
     assigned_technician_id: Optional[int] = None
     notes: Optional[str] = None
     recommended_repairs: Optional[str] = None
-
-    model_config = ConfigDict(extra="forbid")
 
 # Update schedule details (technician only - limited fields)
 class ScheduleTechUpdate(BaseModel):
@@ -55,16 +56,29 @@ class ScheduleTechUpdate(BaseModel):
     description: Optional[str] = None
     recommended_repairs: Optional[str] = None
     status: Optional[Literal["active", "in_progress", "approval", "repair", "completed"]] = None
+    
+    model_config = ConfigDict(extra="forbid")
 
 # Response model for returning schedule details
 class ScheduleResponse(ScheduleBase):
     id: int
     ro_number: int
     title: str
-    duration_minutes: int
+    duration_hours: float | None = None
     created_by_id: int
     created_at: datetime
     updated_at: Optional[datetime] = None
     recommended_repairs: Optional[str] = None
+    recommended_jobs: List[RecommendedJobResponse] = []
+
+    model_config = ConfigDict(from_attributes=True)
+
+# Response model for dashboard view with categorized schedules
+class DashboardSchedulesResponse(BaseModel):
+    active_all: List[ScheduleResponse]
+    in_progress_mine: List[ScheduleResponse]
+    approval_mine: List[ScheduleResponse]
+    repair_mine: List[ScheduleResponse]
+    completed_mine: List[ScheduleResponse]
 
     model_config = ConfigDict(from_attributes=True)

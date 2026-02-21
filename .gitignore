@@ -12,6 +12,14 @@ dist
 dist-ssr
 *.local
 
+# python
+__pycache__/
+*.pyc
+venv/
+
+# sqlite
+*.db
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -24,4 +32,6 @@ dist-ssr
 *.sw?
 
 # Ignore environment variable files
+node_modules/
+dist/
 .env

@@ -25,8 +25,8 @@ const EditScheduleForm = ({ schedule, onSaved, onCancel }) => {
   const [scheduledDate, setScheduledDate] = useState(
     toDatetimeLocal(schedule.scheduled_date)
   );
-  const [durationMinutes, setDurationMinutes] = useState(
-    schedule.duration_minutes ?? 60
+  const [durationHours, setDurationHours] = useState(
+    schedule.durationHours ?? 1
   );
   const [status, setStatus] = useState(schedule.status || "scheduled");
   const [assignedTechnicianId, setAssignedTechnicianId] = useState(
@@ -61,7 +61,7 @@ const EditScheduleForm = ({ schedule, onSaved, onCancel }) => {
         title,
         description: description || null,
         scheduled_date: toIsoString(scheduledDate),
-        duration_minutes: Number(durationMinutes),
+        duration_hours: Number(durationHours),
         status,
         assigned_technician_id: assignedTechnicianId
           ? Number(assignedTechnicianId)
@@ -110,40 +110,25 @@ const EditScheduleForm = ({ schedule, onSaved, onCancel }) => {
 
         <div>
           <label className="block text-sm font-medium mb-1">Duration</label>
-          <input
-            className="border rounded p-2 w-full"
-            type="number"
-            min="15"
-            step="15"
-            value={durationMinutes}
-            onChange={(e) => setDurationMinutes(e.target.value)}
-          />
+          <input className="border rounded p-2 w-full" type="number" min="0" step="0.1" value={durationHours} onChange={(e) => setDurationHours(e.target.value)}/>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div>
           <label className="block text-sm font-medium mb-1">Status</label>
-          <select
-            className="border rounded p-2 w-full"
-            value={status}
-            onChange={(e) => setStatus(e.target.value)}
-          >
-            <option value="scheduled">Scheduled</option>
+          <select className="border rounded p-2 w-full" value={status} onChange={(e) => setStatus(e.target.value)}>
+            <option value="active">Active</option>
             <option value="in_progress">In Progress</option>
+            <option value="approval">Waiting for Approval</option>
+            <option value="repair">In Repair</option>
             <option value="completed">Completed</option>
-            <option value="cancelled">Cancelled</option>
           </select>
         </div>
 
         <div>
           <label className="block text-sm font-medium mb-1">Technician</label>
-          <select
-            className="border rounded p-2 w-full"
-            value={assignedTechnicianId}
-            onChange={(e) => setAssignedTechnicianId(e.target.value)}
-            disabled={loadingTechs}
-          >
+          <select className="border rounded p-2 w-full" value={assignedTechnicianId} onChange={(e) => setAssignedTechnicianId(e.target.value)} disabled={loadingTechs}>
             <option value="">{loadingTechs ? "Loading..." : "Unassigned"}</option>
             {technicians.map((t) => (
               <option key={t.id} value={t.id}>
@@ -154,30 +139,13 @@ const EditScheduleForm = ({ schedule, onSaved, onCancel }) => {
         </div>
       </div>
 
-      <textarea
-        className="border rounded p-2 w-full"
-        value={notes}
-        onChange={(e) => setNotes(e.target.value)}
-        rows={3}
-        placeholder="Internal notes (optional)"
-      />
+      <textarea className="border rounded p-2 w-full" value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} placeholder="Internal notes (optional)"/>
 
       <div className="flex items-center gap-3">
-        <button
-          type="submit"
-          disabled={saving}
-          className="bg-blue-600 text-white px-4 py-2 rounded disabled:opacity-50"
-        >
+        <button type="submit" disabled={saving} className="bg-blue-600 text-white px-4 py-2 rounded disabled:opacity-50">
           {saving ? "Saving..." : "Save"}
         </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          disabled={saving}
-          className="border px-4 py-2 rounded"
-        >
-          Cancel
-        </button>
+        <button type="button" onClick={onCancel} disabled={saving} className="border px-4 py-2 rounded">Cancel</button>
       </div>
     </form>
   );

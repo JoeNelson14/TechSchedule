@@ -9,6 +9,7 @@ import CreateJob from "../pages/CreateJob";
 import Schedules from "../pages/Schedules";
 import CreateSchedule from "../pages/CreateSchedule";
 import Landing from "../pages/Landing";
+import RepairOrder from "../pages/RepairOrder";
 
 const AppRouter = () => {
   return (
@@ -56,7 +57,15 @@ const AppRouter = () => {
             <TechnicianDashboard />
           </RequireAuth>
         } />
+
+        {/* Repair Order Details */}
+        <Route path="/repair-order/:roId" element={
+          <RequireAuth role={["admin", "technician"]}>
+            <RepairOrder />
+          </RequireAuth>
+        } />
       </Routes>
+
     </BrowserRouter>
   );
 }; 

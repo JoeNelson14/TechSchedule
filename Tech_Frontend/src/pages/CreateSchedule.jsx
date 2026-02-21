@@ -28,8 +28,8 @@ const CreateSchedule = () => {
   const [vehicleYear, setVehicleYear] = useState("");
 
   const [scheduledDate, setScheduledDate] = useState("");
-  const [durationMinutes, setDurationMinutes] = useState(60);
-  const [status, setStatus] = useState("scheduled");
+  const [durationHours, setDurationHours] = useState(1);
+  const [status, setStatus] = useState("active");
 
   const [assignedTechId, setAssignedTechId] = useState("");
   const [notes, setNotes] = useState("");
@@ -79,8 +79,8 @@ const CreateSchedule = () => {
 
     // Always set duration to default if user hasn't changed it yet
     // (If you want "manual override", remove this line)
-    if (selectedJob.default_duration_minutes) {
-      setDurationMinutes(selectedJob.default_duration_minutes);
+    if (selectedJob.default_duration_hours) {
+      setDurationHours(selectedJob.default_duration_hours);
     }
 
     // Only auto-fill description if it's empty
@@ -120,7 +120,7 @@ const CreateSchedule = () => {
         vehicle_year: vehicleYear ? Number(vehicleYear) : null,
 
         scheduled_date: toIsoString(scheduledDate),
-        duration_minutes: Number(durationMinutes),
+        duration_hours: Number(durationHours),
         status,
 
         assigned_technician_id: assignedTechId ? Number(assignedTechId) : null,
@@ -156,7 +156,7 @@ const CreateSchedule = () => {
               </option>
               {jobs.map((job) => (
                 <option key={job.id} value={job.id}>
-                  {job.title} ({job.default_duration_minutes} min)
+                  {job.title} ({job.default_duration_hours} hours)
                 </option>
               ))}
             </select>
@@ -199,9 +199,9 @@ const CreateSchedule = () => {
 
             <div>
               <label className="block text-sm font-medium mb-1">
-                Duration (minutes)
+                Duration (hours)
               </label>
-              <input className="border rounded p-2 w-full" type="number" min="15" step="15" value={durationMinutes} onChange={(e) => setDurationMinutes(e.target.value)} required/>
+              <input className="border rounded p-2 w-full" type="number" min="0" step="0.1" value={durationHours} onChange={(e) => setDurationHours(e.target.value)} required/>
             </div>
           </div>
 
@@ -209,10 +209,11 @@ const CreateSchedule = () => {
             <div>
               <label className="block text-sm font-medium mb-1">Status</label>
               <select className="border rounded p-2 w-full" value={status} onChange={(e) => setStatus(e.target.value)} required>
-                <option value="scheduled">Scheduled</option>
+                <option value="active">Active</option>
                 <option value="in_progress">In Progress</option>
+                <option value="approval">Approval</option>
+                <option value="repair">Repair</option>
                 <option value="completed">Completed</option>
-                <option value="cancelled">Cancelled</option>
               </select>
             </div>
 

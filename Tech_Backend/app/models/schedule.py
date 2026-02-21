@@ -31,3 +31,4 @@ class Schedule(Base):
     assigned_technician = relationship("User", foreign_keys=[assigned_technician_id])
     created_by = relationship("User", foreign_keys=[created_by_id])
     job = relationship("Job")
+    recommended_jobs = relationship("ScheduleRecommendedJob", back_populates="schedule", cascade="all, delete-orphan")

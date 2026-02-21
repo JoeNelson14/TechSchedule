@@ -9,10 +9,87 @@ from app.core.dependencies import get_current_user, require_admin
 from app.models.user import User
 from app.models.schedule import Schedule
 from app.models.job import Job
-from app.schemas.schedule import ScheduleCreate, ScheduleTechUpdate, ScheduleUpdate, ScheduleResponse, ScheduleStatusUpdate
+from app.schemas.schedule import ScheduleCreate, ScheduleTechUpdate, ScheduleUpdate, ScheduleResponse, DashboardSchedulesResponse
+from app.schemas.recommended_job import RecommendedJobCreate
+from app.models.schedule_recommended_job import ScheduleRecommendedJob
 
 router = APIRouter(prefix="/schedules", tags=["schedules"])
 ACTIVE_STATUSES = ["active", "in_progress", "approval", "repair"]
+
+# Helper functions to convert between hours and minutes for duration fields
+def hours_to_minutes(hours: float) -> int:
+    return int(round(hours * 60))
+
+def minutes_to_hours(minutes: int | None) -> float | None:
+    if minutes is None:
+        return None
+    return round(minutes / 60, 2)
+
+# Convert Schedule model to ScheduleResponse schema, including converting duration from minutes to hours and including recommended jobs in the response
+def schedule_to_response(schedule: Schedule) -> ScheduleResponse:
+    return ScheduleResponse(
+        id=schedule.id,
+        ro_number=schedule.ro_number,
+        job_id=schedule.job_id,
+        
+        title=schedule.title,
+        description=schedule.description,
+
+        customer_name=schedule.customer_name,
+        customer_phone=schedule.customer_phone,
+        customer_email=schedule.customer_email,
+
+        vehicle_make=schedule.vehicle_make,
+        vehicle_model=schedule.vehicle_model,
+        vehicle_year=schedule.vehicle_year,
+
+        scheduled_date=schedule.scheduled_date,
+        duration_hours=minutes_to_hours(schedule.duration_minutes),
+
+        status=schedule.status,
+        assigned_technician_id=schedule.assigned_technician_id,
+        recommended_repairs=schedule.recommended_repairs,
+        notes=schedule.notes,
+
+        created_by_id=schedule.created_by_id,
+        created_at=schedule.created_at,
+        updated_at=schedule.updated_at,
+
+        recommended_jobs=getattr(schedule, "recommended_jobs", [])
+    )
+
+# Gets dashboard schedules categorized by status for the current technician (active_all, in_progress_mine, approval_mine, repair_mine, completed_mine)
+@router.get("/dashboard", response_model=DashboardSchedulesResponse)
+def get_dashboard_schedules(db: Session = Depends(get_db), current_user: User = Depends(get_current_user), limit: int = Query(12, ge=1, le=50)):
+    # For the dashboard, we want to return categorized schedules for the current technician:
+
+    # Base query for schedules assigned to the current technician (or all if admin)
+    base_mine = db.query(Schedule)
+    if current_user.role != "admin":
+        base_mine = base_mine.filter(Schedule.assigned_technician_id == current_user.id)
+
+    # - Active (all users see all active schedules)
+    active_all = db.query(Schedule).filter(Schedule.status == "active").order_by(Schedule.scheduled_date.desc().nullslast(), Schedule.id.desc()).limit(limit).all()
+    
+    # - In Progress (only schedules assigned to the current technician)
+    in_progress_mine = base_mine.filter(Schedule.status == "in_progress").order_by(Schedule.scheduled_date.desc().nullslast(), Schedule.id.desc()).limit(limit).all()
+
+    # - Approval (only schedules assigned to the current technician)
+    approval_mine = base_mine.filter(Schedule.status == "approval").order_by(Schedule.scheduled_date.desc().nullslast(), Schedule.id.desc()).limit(limit).all()
+
+    # - Repair (only schedules assigned to the current technician)
+    repair_mine = base_mine.filter(Schedule.status == "repair").order_by(Schedule.scheduled_date.desc().nullslast(), Schedule.id.desc()).limit(limit).all()
+
+    # - Completed (only schedules assigned to the current technician)
+    completed_mine = base_mine.filter(Schedule.status == "completed").order_by(Schedule.scheduled_date.desc().nullslast(), Schedule.id.desc()).limit(limit).all()
+
+    return {
+    "active_all": [schedule_to_response(s) for s in active_all],
+    "in_progress_mine": [schedule_to_response(s) for s in in_progress_mine],
+    "approval_mine": [schedule_to_response(s) for s in approval_mine],
+    "repair_mine": [schedule_to_response(s) for s in repair_mine],
+    "completed_mine": [schedule_to_response(s) for s in completed_mine],
+}
 
 # Get all schedules (both admin and technician can view)
 @router.get("/", response_model=List[ScheduleResponse])
@@ -23,26 +100,62 @@ def get_schedules(skip: int = 0, limit: int = 100, status: str = None, db: Sessi
     if active:
         query = query.filter(Schedule.status.in_(ACTIVE_STATUSES))
 
-    # If mine_in_progress is true, filter to only schedules assigned to the technician that are in progress
+    # If mine_in_progress is true, filter to only schedules that are in progress and assigned to the current technician
     if mine_in_progress:
-        query = query.filter(
-            Schedule.assigned_technician_id == current_user.id,
-            Schedule.status == "in_progress"
-        )
-    
-    # Technicians can only see schedules assigned to them or unassigned
-    if current_user.role == "technician":
-        query = query.filter(
-            (Schedule.assigned_technician_id == current_user.id) |
-            (Schedule.assigned_technician_id == None)
-        )
-    
+        query = query.filter(Schedule.assigned_technician_id == current_user.id)
+
     # Filter by status if provided
     if status:
         query = query.filter(Schedule.status == status)
     
+    # Technicians can only see active schedules and schedules assigned to them, admins can see all schedules
+    if current_user.role == "technician":
+        query = query.filter(
+            (Schedule.status == "active") |
+            (Schedule.assigned_technician_id == current_user.id) |
+            (Schedule.assigned_technician_id == None)
+        )
+    
     schedules = query.offset(skip).limit(limit).all()
-    return schedules
+    return [schedule_to_response(s) for s in schedules]
+
+# Get schedules by date range
+@router.get("/date-range/", response_model=List[ScheduleResponse])
+def get_schedules_by_date_range(start_date: datetime, end_date: datetime, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    query = db.query(Schedule).filter(
+        Schedule.scheduled_date >= start_date,
+        Schedule.scheduled_date <= end_date
+    )
+    
+    # Technicians can only see their schedules
+    if current_user.role == "technician":
+        query = query.filter(
+            (Schedule.assigned_technician_id == current_user.id) | 
+            (Schedule.assigned_technician_id == None)
+        )
+    
+    schedules = query.all()
+    return [schedule_to_response(s) for s in schedules]
+
+# Get a single schedule by RO number (business id)
+@router.get("/repair-order/{ro_number}", response_model=ScheduleResponse)
+def get_schedule_by_ro_number(ro_number: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    # Validate that the schedule exists
+    schedule = db.query(Schedule).filter(Schedule.ro_number == ro_number).first()
+
+    if not schedule:
+        raise HTTPException(status_code=404, detail="Repair order not found")
+
+    # RBAC:
+    # - Admin can view anything
+    # - Tech can view:
+    #   - any ACTIVE queue RO (status == "active") so they can decide to accept
+    #   - OR any RO assigned to them (any status)
+    if current_user.role == "technician":
+        if schedule.status != "active" and schedule.assigned_technician_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Access denied")
+
+    return schedule_to_response(schedule)
 
 # Get a single schedule by ID
 @router.get("/{schedule_id}", response_model=ScheduleResponse)
@@ -56,7 +169,7 @@ def get_schedule(schedule_id: int, db: Session = Depends(get_db), current_user: 
     if current_user.role == "technician" and schedule.assigned_technician_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
     
-    return schedule
+    return schedule_to_response(schedule)
 
 # Create a new schedule (admin only)
 @router.post("/", response_model=ScheduleResponse, status_code=status.HTTP_201_CREATED)
@@ -76,14 +189,14 @@ def create_schedule(schedule: ScheduleCreate, db: Session = Depends(get_db), cur
     # Generate next RO number (1000 style)
     next_ro = (db.query(func.max(Schedule.ro_number)).scalar() or 1000) + 1
 
-    duration = schedule.duration_minutes or job.default_duration_minutes
+    duration_minutes = hours_to_minutes(schedule.duration_hours) if schedule.duration_hours is not None else job.default_duration_minutes
 
     # Validate job exists
     db_schedule = Schedule(
-        **schedule.model_dump(exclude={"duration_minutes"}),
+        **schedule.model_dump(exclude={"duration_hours", "status"}),
         ro_number=next_ro,
         title=job.title,
-        duration_minutes=duration,
+        duration_minutes=duration_minutes,
         created_by_id=current_user.id,
         status="active",
     )
@@ -96,7 +209,7 @@ def create_schedule(schedule: ScheduleCreate, db: Session = Depends(get_db), cur
     db.commit()
     db.refresh(db_schedule)
 
-    return db_schedule
+    return schedule_to_response(db_schedule)
 
 # Update a schedule (admin only)
 @router.put("/{schedule_id}", response_model=ScheduleResponse)
@@ -114,32 +227,18 @@ def update_schedule(schedule_id: int, schedule_update: ScheduleUpdate, db: Sessi
         technician = db.query(User).filter(User.id == update_data["assigned_technician_id"]).first()
         if not technician:
             raise HTTPException(status_code=404, detail="Assigned technician not found")
-    
+        
+    # Convert duration from hours to minutes if being updated
+    if "duration_hours" in update_data and update_data["duration_hours"] is not None:
+        db_schedule.duration_minutes = hours_to_minutes(update_data.pop("duration_hours"))
+
     for field, value in update_data.items():
         setattr(db_schedule, field, value)
     
     db.commit()
     db.refresh(db_schedule)
     
-    return db_schedule
-
-# Get schedules by date range
-@router.get("/date-range/", response_model=List[ScheduleResponse])
-def get_schedules_by_date_range(start_date: datetime, end_date: datetime, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    query = db.query(Schedule).filter(
-        Schedule.scheduled_date >= start_date,
-        Schedule.scheduled_date <= end_date
-    )
-    
-    # Technicians can only see their schedules
-    if current_user.role == "technician":
-        query = query.filter(
-            (Schedule.assigned_technician_id == current_user.id) | 
-            (Schedule.assigned_technician_id == None)
-        )
-    
-    schedules = query.all()
-    return schedules
+    return schedule_to_response(db_schedule)
 
 # Delete a schedule (admin only)
 @router.delete("/{schedule_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -200,8 +299,14 @@ def tech_update_schedule(schedule_id: int, payload: ScheduleTechUpdate, db: Sess
         
         # If transitioning from in_progress to approval, check if recommended_repairs is empty. If empty, allow transition but set status to completed instead of approval
         if current == "in_progress" and incoming_status == "approval":
+            # Check if there are any recommended repairs (either in the text field or in the recommended jobs)
             recommended_repairs = (db_schedule.recommended_repairs or "").strip()
-            if recommended_repairs == "":
+
+            # Check if there are any recommended jobs associated with this schedule
+            has_recommended_repairs = db.query(ScheduleRecommendedJob).filter(ScheduleRecommendedJob.schedule_id == db_schedule.id).first() is not None
+
+            # If there are no recommended repairs and no recommended jobs, set status to completed instead of approval
+            if recommended_repairs == "" and not has_recommended_repairs:
                 db_schedule.status = "completed"
             else:
                 db_schedule.status = "approval"
@@ -210,7 +315,7 @@ def tech_update_schedule(schedule_id: int, payload: ScheduleTechUpdate, db: Sess
 
     db.commit()
     db.refresh(db_schedule)
-    return db_schedule
+    return schedule_to_response(db_schedule)
 
 # Endpoint for technicians to accept a schedule (change status to in_progress)
 @router.post("/{schedule_id}/accept", response_model=ScheduleResponse)
@@ -234,5 +339,52 @@ def accept_schedule(schedule_id: int, db: Session = Depends(get_db), current_use
 
     db.commit()
     db.refresh(db_schedule)
+    return schedule_to_response(db_schedule)
+
+# Endpoint to add a recommended job to a schedule
+@router.post("/{schedule_id}/recommended-jobs/", response_model=ScheduleResponse)
+def add_recommended_job(schedule_id: int, payload: RecommendedJobCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    schedule = db.query(Schedule).filter(Schedule.id == schedule_id).first()
+
+    if not schedule:
+        raise HTTPException(status_code=404, detail="RO not found.")
     
-    return db_schedule
+    if current_user.role != "admin":
+        if schedule.assigned_technician_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Not allowed to edit this RO.")
+        if schedule.status == "completed":
+            raise HTTPException(status_code=400, detail="Cannot edit a completed RO.")
+        
+    job = db.query(Job).filter(Job.id == payload.job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found.")
+    
+    rec = ScheduleRecommendedJob(schedule_id=schedule_id, job_id=payload.job_id, job_title_snapshot=job.title, duration_minutes_snapshot=job.default_duration_minutes)
+
+    db.add(rec)
+    db.commit()
+    db.refresh(schedule)
+    return schedule_to_response(schedule)
+
+# Endpoint to delete a recommended job from a schedule
+@router.delete("/{schedule_id}/recommended-jobs/{rec_id}", response_model=ScheduleResponse)
+def delete_recommended_job(schedule_id: int, rec_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    schedule = db.query(Schedule).filter(Schedule.id == schedule_id).first()
+
+    if not schedule:
+        raise HTTPException(status_code=404, detail="RO not found.")
+    
+    if current_user.role != "admin":
+        if schedule.assigned_technician_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Not allowed to edit this RO.")
+        if schedule.status == "completed":
+            raise HTTPException(status_code=400, detail="Cannot edit a completed RO.")
+
+    rec = db.query(ScheduleRecommendedJob).filter(ScheduleRecommendedJob.id == rec_id, ScheduleRecommendedJob.schedule_id == schedule_id).first()
+    if not rec:
+        raise HTTPException(status_code=404, detail="Recommended job not found.")
+    
+    db.delete(rec)
+    db.commit()
+    db.refresh(schedule)
+    return schedule_to_response(schedule)
