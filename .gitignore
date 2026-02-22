@@ -1,5 +1,24 @@
+############################
+# OS / Editor
+############################
+.DS_Store
+Thumbs.db
+
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+*.swo
+
+############################
 # Logs
-logs
+############################
+logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -7,30 +26,56 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-dist-ssr
-*.local
-
-# python
+############################
+# Python
+############################
 __pycache__/
 *.pyc
 *.pyo
+*.pyd
+
+# virtual environments (all common names)
+.venv/
 venv/
+env/
+ENV/
 
-# sqlite
+############################
+# Python tooling caches
+############################
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+############################
+# Database (dev only)
+############################
 *.db
+*.sqlite3
+*.db-journal
+*.db-wal
+*.db-shm
 
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
-.DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
-
-# Ignore environment variable files
+############################
+# Node / Frontend
+############################
 node_modules/
 dist/
+dist-ssr/
+.vite/
+.cache/
+
+############################
+# Environment variables
+############################
 .env
+.env.*
+!.env.example
+
+############################
+# Build / misc
+############################
+coverage/
+*.local
