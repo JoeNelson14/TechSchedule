@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-import { getDashboardSchedules } from "../api/schedules";
+import { useAuth } from "../auth/useAuth";
+import { Link, useNavigate } from "react-router-dom";
+import { getDashboardSchedules, acceptSchedule } from "../api/schedules";
+import AppNav from "./AppNav";
+import { useToast } from "./ToastContext";
 
 const Card = ({ title, subtitle, children }) => (
   <div className="bg-white border rounded-xl shadow-sm flex flex-col min-h-[280px]">
@@ -16,18 +19,29 @@ const Card = ({ title, subtitle, children }) => (
   </div>
 );
 
-const Row = ({ to, ro, title, right }) => (
-  <div className="flex items-center justify-between gap-3 px-3 py-2 rounded-lg hover:bg-gray-50">
-    <Link to={to} className="min-w-0 flex-1">
-      <div className="text-sm font-medium text-gray-900">RO #{ro}</div>
-      <div className="text-xs text-gray-600 truncate">{title}</div>
-    </Link>
-    {right}
-  </div>
-);
+const Row = ({ to, ro, title, right }) => {
+  const navigate = useNavigate();
+
+  return (
+    <div role="button" tabIndex={0} onClick={() => navigate(to)} onKeyDown={(e) => {
+      if (e.key === "Enter" || e.key === " ") navigate(to);
+    }}
+    className="flex items-center justify-between gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 cursor-pointer">
+      <div className="min-w-0 flex-1">
+        <div className="text-sm font-medium text-gray-900">RO #{ro}</div>
+        <div className="text-xs text-gray-600 truncate">{title}</div>
+      </div>
+      <div onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>{right}</div>
+    </div>
+  )
+}
 
 // Main dashboard grid component
 const RoDashboardGrid = () => {
+  const { user } = useAuth();
+  const toast = useToast();
+  
+
   const [data, setData] = useState({
       active_all: [],
       in_progress_mine: [],
@@ -36,17 +50,52 @@ const RoDashboardGrid = () => {
       completed_mine: []
   });
 
+  // Track which schedules are currently being accepted to prevent duplicate clicks
+  const [ acceptingIds, setAcceptingIds ] = useState(() => new Set()); // Track which schedules are being accepted
+
+  const setAccepting = (scheduleId, isAccepting) => {
+    setAcceptingIds((prev) => {
+      const next = new Set(prev);
+      if (isAccepting) next.add(scheduleId);
+      else next.delete(scheduleId);
+      return next;
+    });
+  }
+
   // Load dashboard data
   const load = async () => {
     const limit = 12 // Limit to 12 items per category for dashboard view
     const response = await getDashboardSchedules({limit});
-    setData(response.data);
+    setData(response);
   };
 
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const handleAccept = async (scheduleId) => {
+    if (acceptingIds.has(scheduleId)) return; // Prevent duplicate clicks
+    setAccepting(scheduleId, true);
+
+    try {
+      await acceptSchedule(scheduleId);
+      toast.success("Repair order accepted.");
+      await load(); // Refresh data after accepting
+    } catch (error) {
+      const status = error?.response?.status;
+
+      if (status === 409) {
+        // Another technician accepted it first, show a message and refresh
+        toast.error("This repair order was just accepted by another technician.");
+        await load();
+      } else {
+        toast.error(error?.response?.data?.detail || "Failed to accept the repair order.");
+      }
+    } finally {
+      setAccepting(scheduleId, false);
+    }
+  };
 
   // Destructure categories with fallbacks to empty arrays
   const activeAll = data.active_all || [];
@@ -58,19 +107,28 @@ const RoDashboardGrid = () => {
   // Desktop: 2–3 columns, each card scrolls internally to minimize page scrolling
   return (
     <div className="max-w-6xl mx-auto px-4 py-6">
-      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+      <AppNav />
+      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 mt-5">
         {/* Active (all users see all) */}
         <div className="xl:col-span-2">
-          <Card title="Active Repair Orders" subtitle="All active ROs in the shop (visible to everyone)">
+          <Card title="Active Repair Orders" subtitle="All active ROs in the shop">
             {activeAll.length ? (
               <div className="space-y-1">
                 {activeAll.map((s) => (
                   <Row
-                    key={s.id}
+                    key={s.ro_number}
                     to={`/repair-order/${s.ro_number}`} // Link to RO details page
                     ro={s.ro_number}
                     title={s.title}
-                    right={<Link to={`/schedules?status=active`} className="text-xs px-2 py-1 rounded bg-gray-900 text-white hover:bg-gray-800">View</Link>}
+                    right={
+                      user?.role === "technician" ? (
+                        <button onClick={() => handleAccept(s.id)} disabled={acceptingIds.has(s.id)} className={`text-xs px-2 py-1 rounded text-white ${acceptingIds.has(s.id) ? 'bg-gray-400' : 'bg-emerald-600 hover:bg-emerald-700'}`}>
+                          Accept
+                        </button>
+                      ) : (
+                        <Link to={`/repair-order/${s.ro_number}`} className="text-xs px-2 py-1 rounded bg-gray-900 text-white hover:bg-gray-800">View</Link>
+                      )
+                    }
                   />
                 ))}
               </div>
@@ -81,16 +139,16 @@ const RoDashboardGrid = () => {
         </div>
 
         {/* In Progress (mine) */}
-        <Card title="My In Progress" subtitle="Assigned to you • status = in_progress">
+        <Card title="In Progress" subtitle="Assigned to you">
           {mineInProgress.length ? (
             <div className="space-y-1">
               {mineInProgress.map((s) => (
                 <Row
-                  key={s.id}
+                  key={s.ro_number}
                   to={`/repair-order/${s.ro_number}`} // Link to RO details page
                   ro={s.ro_number}
                   title={s.title}
-                  right={<Link to={`/schedules?status=in_progress`} className="text-xs px-2 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-700">Open</Link>}
+                  right={null} 
                 />
               ))}
             </div>
@@ -100,16 +158,16 @@ const RoDashboardGrid = () => {
         </Card>
 
         {/* Approval (mine) */}
-        <Card title="My Approval" subtitle="Assigned to you • status = approval">
+        <Card title="Approval" subtitle="Assigned to you">
           {mineApproval.length ? (
             <div className="space-y-1">
               {mineApproval.map((s) => (
                 <Row
-                  key={s.id}
+                  key={s.ro_number}
                   to={`/repair-order/${s.ro_number}`} // Link to RO details page
                   ro={s.ro_number}
                   title={s.title}
-                  right={<Link to={`/schedules?status=approval`} className="text-xs px-2 py-1 rounded bg-gray-900 text-white hover:bg-gray-800">Open</Link>}
+                  right={null}
                 />
               ))}
             </div>
@@ -119,16 +177,16 @@ const RoDashboardGrid = () => {
         </Card>
 
         {/* Repair (mine) */}
-        <Card title="My Repair" subtitle="Assigned to you • status = repair">
+        <Card title="Repair" subtitle="Assigned to you">
           {mineRepair.length ? (
             <div className="space-y-1">
               {mineRepair.map((s) => (
                 <Row
-                  key={s.id}
+                  key={s.ro_number}
                   to={`/repair-order/${s.ro_number}`} // Link to RO details page
                   ro={s.ro_number}
                   title={s.title}
-                  right={<Link to={`/schedules?status=repair`} className="text-xs px-2 py-1 rounded bg-gray-900 text-white hover:bg-gray-800">Open</Link>}
+                  right={null}
                 />
               ))}
             </div>
@@ -138,16 +196,16 @@ const RoDashboardGrid = () => {
         </Card>
 
         {/* Completed (mine) */}
-        <Card title="My Completed" subtitle="Assigned to you • status = completed">
+        <Card title="Completed" subtitle="Assigned to you">
           {mineCompleted.length ? (
             <div className="space-y-1">
               {mineCompleted.map((s) => (
                 <Row
-                  key={s.id}
+                  key={s.ro_number}
                   to={`/repair-order/${s.ro_number}`} // Link to RO details page
                   ro={s.ro_number}
                   title={s.title}
-                  right={<Link to={`/schedules?status=completed`} className="text-xs px-2 py-1 rounded bg-gray-900 text-white hover:bg-gray-800">View</Link>}
+                  right={null}
                 />
               ))}
             </div>

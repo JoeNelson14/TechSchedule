@@ -65,7 +65,7 @@ export const removeRecommendedJob = async (scheduleId, recId) => {
  */
 // Technician accepts an active schedule, moving it to in_progress
 export const acceptSchedule = async (id) => {
-  const response = await api.post(`/schedules/${id}/accept`);
+  const response = await api.post(`/schedules/${id}/accept`, null, { skipGlobalError: true });
   return response.data;
 };
 // Technician marks an in_progress schedule as completed (with optional recommended repairs)

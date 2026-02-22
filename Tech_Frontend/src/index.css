@@ -1,3 +1,34 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Toast animations */
+@keyframes toast-in {
+  0% {
+    opacity: 0;
+    transform: translateX(40px) translateY(10px) scale(0.98)
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0) translateY(0) scale(1);
+  }
+}
+
+@keyframes toast-out {
+  0% {
+    opacity: 1;
+    transform: translateX(0) translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(40px) translateY(10px) scale(0.98);
+  }
+}
+
+.toast-enter {
+  animation: toast-in 220ms ease-out forwards;
+}
+
+.toast-exit {
+  animation: toast-out 180ms ease-in forwards;
+}

@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { notify } from '../utils/notify';
 
 // Create an Axios instance with the base URL from environment variables
 const axiosApi = axios.create({
@@ -25,10 +26,38 @@ axiosApi.interceptors.response.use(
   (response) => response,
   // If there's an error, check if it's a 401 Unauthorized
   (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem('access_token');
-      window.location.href = '/login';
+    const status = error?.response?.status;
+
+    const data = error?.response?.data || {};
+    const code = data?.code;
+    const message = data?.detail || error?.message || "Unexpected error";
+
+    if (status === 401) {
+      localStorage.removeItem('access_token'); // Remove the token from local storage
+      window.location.href = '/login'; // Redirect to the login page
+      return Promise.reject(error);
     }
+
+    if (!error.config?.skipGlobalError) {
+      if (status === 403) {
+        notify.error("You don't have permission to perform this action.");
+      } else if (status === 404) {
+        notify.error("The requested resource was not found.");
+      } else if (status === 409) {
+        if (code === "RO_ALREADY_ACCEPTED") {
+          notify.info("Another Technician has already accepted this repair order.");
+        } else if (code === "RO_NOT_ACTIVE") {
+          notify.info("This repair order is currently not active.");
+        } else {
+          notify.info(message);
+        }
+      } else if (status === 422) {
+        notify.error(message);
+      } else {
+        notify.error(message);
+      }
+    }
+
     return Promise.reject(error);
   }
 );

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { updateSchedule } from "../api/schedules";
 import { getTechnicians } from "../api/users";
+import { notify } from "../utils/notify";
 
 const toDatetimeLocal = (isoString) => {
   if (!isoString) return "";
@@ -22,20 +23,26 @@ const EditScheduleForm = ({ schedule, onSaved, onCancel }) => {
 
   const [title, setTitle] = useState(schedule.title || "");
   const [description, setDescription] = useState(schedule.description || "");
-  const [scheduledDate, setScheduledDate] = useState(
-    toDatetimeLocal(schedule.scheduled_date)
-  );
-  const [durationHours, setDurationHours] = useState(
-    schedule.durationHours ?? 1
-  );
-  const [status, setStatus] = useState(schedule.status || "scheduled");
-  const [assignedTechnicianId, setAssignedTechnicianId] = useState(
-    schedule.assigned_technician_id ? String(schedule.assigned_technician_id) : ""
-  );
+  const [scheduledDate, setScheduledDate] = useState(toDatetimeLocal(schedule.scheduled_date));
+  const [durationHours, setDurationHours] = useState(schedule.duration_hours != null ? String(schedule.duration_hours) : "");
+  const [status, setStatus] = useState(schedule.status || "active");
+  const [assignedTechnicianId, setAssignedTechnicianId] = useState(schedule.assigned_technician_id ? String(schedule.assigned_technician_id) : "");
   const [notes, setNotes] = useState(schedule.notes || "");
 
   const [saving, setSaving] = useState(false);
+ 
+  // Whenever the schedule prop changes (e.g. when editing a different schedule), update form fields
+  useEffect(() => {
+    setTitle(schedule.title || "");
+    setDescription(schedule.description || "");
+    setScheduledDate(toDatetimeLocal(schedule.scheduled_date));
+    setDurationHours(schedule.duration_hours != null ? String(schedule.duration_hours) : "");
+    setStatus(schedule.status || "active");
+    setAssignedTechnicianId(schedule.assigned_technician_id ? String(schedule.assigned_technician_id) : "");
+    setNotes(schedule.notes || "");
+  }, [schedule]);
 
+  // Load technicians for the dropdown
   useEffect(() => {
     const loadTechs = async () => {
       try {
@@ -73,7 +80,7 @@ const EditScheduleForm = ({ schedule, onSaved, onCancel }) => {
       onSaved(); // refresh list + close modal
     } catch (err) {
       console.error("Update schedule failed:", err);
-      alert("Update failed. Check console/network.");
+      notify.error("Update failed. Check console/network.");
     } finally {
       setSaving(false);
     }

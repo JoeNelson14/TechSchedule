@@ -2,8 +2,15 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import AppNav from "../components/AppNav";
 import { getScheduleByRoNumber, addRecommendedJob, removeRecommendedJob } from "../api/schedules";
-import { getJobs } from "../api/jobApi"; // or wherever your jobs fetch lives
+import { getJobs } from "../api/jobApi";
 import { useAuth } from "../auth/useAuth";
+
+const minutesToHours = (m) => (m == null ? null : Number(m) / 60);
+
+const formatHours = (h) => {
+  if (h == null || Number.isNaN(h)) return "-";
+  return Number(h).toFixed(1);
+}
 
 const RepairOrder = () => {
   // Get RO number from URL params and auth info
@@ -101,7 +108,6 @@ const RepairOrder = () => {
   return (
     <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
       <AppNav />
-
       {/* Header */}
       <div className="bg-white shadow rounded p-5 flex items-start justify-between">
         <div>
@@ -136,7 +142,7 @@ const RepairOrder = () => {
                 <button key={job.id} type="button" className="w-full text-left px-3 py-2 hover:bg-gray-50" onClick={() => handleAddJob(job.id)}>
                   <div className="font-medium">{job.title}</div>
                   <div className="text-xs text-gray-600">
-                    Duration: {job.duration_hours_snapshot ?? "-"} hrs
+                    Duration: {formatHours(job.default_duration_hours)} hrs
                   </div>
                 </button>
               ))}
@@ -152,7 +158,7 @@ const RepairOrder = () => {
                 <div>
                   <div className="font-medium">{rec.job_title_snapshot}</div>
                   <div className="text-xs text-gray-600">
-                    Duration: {rec.duration_hours_snapshot ?? "-"} hrs
+                    Duration: {minutesToHours(rec.duration_minutes_snapshot)} hrs
                   </div>
                 </div>
 
@@ -166,8 +172,6 @@ const RepairOrder = () => {
           <div className="text-sm text-gray-500">No recommended jobs added yet.</div>
         )}
       </div>
-
-      {/* Keep your existing recommended_repairs text area if you want */}
     </div>
   );
 };

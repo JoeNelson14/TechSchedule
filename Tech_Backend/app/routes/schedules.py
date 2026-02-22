@@ -12,6 +12,7 @@ from app.models.job import Job
 from app.schemas.schedule import ScheduleCreate, ScheduleTechUpdate, ScheduleUpdate, ScheduleResponse, DashboardSchedulesResponse
 from app.schemas.recommended_job import RecommendedJobCreate
 from app.models.schedule_recommended_job import ScheduleRecommendedJob
+from app.core.errors import ErrorCode, http_error
 
 router = APIRouter(prefix="/schedules", tags=["schedules"])
 ACTIVE_STATUSES = ["active", "in_progress", "approval", "repair"]
@@ -144,7 +145,7 @@ def get_schedule_by_ro_number(ro_number: int, db: Session = Depends(get_db), cur
     schedule = db.query(Schedule).filter(Schedule.ro_number == ro_number).first()
 
     if not schedule:
-        raise HTTPException(status_code=404, detail="Repair order not found")
+        http_error(404, "Repair order not found.", ErrorCode.RO_NOT_ACTIVE)
 
     # RBAC:
     # - Admin can view anything
@@ -153,7 +154,7 @@ def get_schedule_by_ro_number(ro_number: int, db: Session = Depends(get_db), cur
     #   - OR any RO assigned to them (any status)
     if current_user.role == "technician":
         if schedule.status != "active" and schedule.assigned_technician_id != current_user.id:
-            raise HTTPException(status_code=403, detail="Access denied")
+            http_error(403, "Access denied", ErrorCode.FORBIDDEN)
 
     return schedule_to_response(schedule)
 
@@ -163,11 +164,11 @@ def get_schedule(schedule_id: int, db: Session = Depends(get_db), current_user: 
     schedule = db.query(Schedule).filter(Schedule.id == schedule_id).first()
     
     if not schedule:
-        raise HTTPException(status_code=404, detail="Schedule not found")
+        http_error(404, "Schedule not found", ErrorCode.NOT_FOUND)
     
     # Technicians can only view their own schedules
     if current_user.role == "technician" and schedule.assigned_technician_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Access denied")
+        http_error(403, "Access denied", ErrorCode.FORBIDDEN)
     
     return schedule_to_response(schedule)
 
@@ -177,13 +178,13 @@ def create_schedule(schedule: ScheduleCreate, db: Session = Depends(get_db), cur
     # Validate job exists
     job = db.query(Job).filter(Job.id == schedule.job_id).first()
     if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
+        http_error(404, "Job not found", ErrorCode.NOT_FOUND)
     
     # Validate assigned technician if provided
     if schedule.assigned_technician_id:
         technician = db.query(User).filter(User.id == schedule.assigned_technician_id).first()
         if not technician:
-            raise HTTPException(status_code=404, detail="Assigned technician not found")
+            http_error(404, "Assigned technician not found", ErrorCode.NOT_FOUND)
         
 
     # Generate next RO number (1000 style)
@@ -217,7 +218,7 @@ def update_schedule(schedule_id: int, schedule_update: ScheduleUpdate, db: Sessi
     db_schedule = db.query(Schedule).filter(Schedule.id == schedule_id).first()
     
     if not db_schedule:
-        raise HTTPException(status_code=404, detail="Schedule not found")
+        http_error(404, "Schedule not found", ErrorCode.NOT_FOUND)
     
     # Update only provided fields
     update_data = schedule_update.model_dump(exclude_unset=True)
@@ -226,7 +227,7 @@ def update_schedule(schedule_id: int, schedule_update: ScheduleUpdate, db: Sessi
     if "assigned_technician_id" in update_data and update_data["assigned_technician_id"]:
         technician = db.query(User).filter(User.id == update_data["assigned_technician_id"]).first()
         if not technician:
-            raise HTTPException(status_code=404, detail="Assigned technician not found")
+            http_error(404, "Assigned technician not found", ErrorCode.NOT_FOUND)
         
     # Convert duration from hours to minutes if being updated
     if "duration_hours" in update_data and update_data["duration_hours"] is not None:
@@ -246,7 +247,7 @@ def delete_schedule(schedule_id: int, db: Session = Depends(get_db), current_use
     db_schedule = db.query(Schedule).filter(Schedule.id == schedule_id).first()
     
     if not db_schedule:
-        raise HTTPException(status_code=404, detail="Schedule not found")
+        http_error(404, "Schedule not found", ErrorCode.NOT_FOUND)
     
     db.delete(db_schedule)
     db.commit()
@@ -260,16 +261,16 @@ def tech_update_schedule(schedule_id: int, payload: ScheduleTechUpdate, db: Sess
 
     # Validate schedule exists
     if not db_schedule:
-        raise HTTPException(status_code=404, detail="Repair order not found.")
+        http_error(404, "Repair order not found", ErrorCode.RO_NOT_ACTIVE)
     # Validate technician role
     if current_user.role != "technician":
-        raise HTTPException(status_code=403, detail="Technician endpoint only.")
+        http_error(403, "Only technicians can perform this action", ErrorCode.FORBIDDEN)
     # Validate assigned technician
     if db_schedule.assigned_technician_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not allowed to edit this repair order.")
+        http_error(403, "Not allowed to edit this repair order", ErrorCode.RO_NOT_ASSIGNED_TO_YOU)
     # Prevent editing if schedule is completed
     if db_schedule.status == "completed":
-        raise HTTPException(status_code=409, detail="Cannot edit a completed repair order.")
+        http_error(409, "Cannot edit a completed repair order", ErrorCode.RO_LOCKED_COMPLETED)
     
     # Update only provided fields
     data = payload.model_dump(exclude_unset=True)
@@ -295,7 +296,7 @@ def tech_update_schedule(schedule_id: int, payload: ScheduleTechUpdate, db: Sess
 
         # If the current status is not in the allowed transitions or the incoming status is not allowed from the current status, raise an error
         if current not in allowed or incoming_status not in allowed[current]:
-            raise HTTPException(status_code=409, detail=f"Invalid status transition from {current} to {incoming_status}.")
+            http_error(409, f"Invalid status transition from {current} to {incoming_status}.", ErrorCode.CONFLICT)
         
         # If transitioning from in_progress to approval, check if recommended_repairs is empty. If empty, allow transition but set status to completed instead of approval
         if current == "in_progress" and incoming_status == "approval":
@@ -322,17 +323,17 @@ def tech_update_schedule(schedule_id: int, payload: ScheduleTechUpdate, db: Sess
 def accept_schedule(schedule_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     # Only technicians can accept schedules
     if current_user.role != "technician":
-        raise HTTPException(status_code=403, detail="Only technicians can accept schedules")
+        http_error(403, "Only technicians can perform this action", ErrorCode.FORBIDDEN)
     # Validate schedule exists
     db_schedule = db.query(Schedule).filter(Schedule.id == schedule_id).first()
     if not db_schedule:
-        raise HTTPException(status_code=404, detail="Repair Order not found.")
+        http_error(404, "Repair order not found", ErrorCode.NOT_FOUND)
     # Cannot accept a schedule that is already completed
     if db_schedule.status != "active":
-        raise HTTPException(status_code=400, detail="Repair order is currently not active.")
+        http_error(400, "Repair order is currently not active", ErrorCode.RO_NOT_ACTIVE)
     # If the schedule is already assigned to another technician, prevent accepting
     if db_schedule.assigned_technician_id is not None and db_schedule.assigned_technician_id != current_user.id:
-        raise HTTPException(status_code=409, detail="Repair order is already assigned to another technician.")
+        http_error(409, "Repair order is already assigned to another technician", ErrorCode.RO_ALREADY_ACCEPTED)
     
     db_schedule.assigned_technician_id = current_user.id
     db_schedule.status = "in_progress"
@@ -347,17 +348,17 @@ def add_recommended_job(schedule_id: int, payload: RecommendedJobCreate, db: Ses
     schedule = db.query(Schedule).filter(Schedule.id == schedule_id).first()
 
     if not schedule:
-        raise HTTPException(status_code=404, detail="RO not found.")
+        http_error(404, "Repair order not found", ErrorCode.NOT_FOUND)
     
     if current_user.role != "admin":
         if schedule.assigned_technician_id != current_user.id:
-            raise HTTPException(status_code=403, detail="Not allowed to edit this RO.")
+            http_error(403, "Not allowed to edit this repair order", ErrorCode.RO_NOT_ASSIGNED_TO_YOU)
         if schedule.status == "completed":
-            raise HTTPException(status_code=400, detail="Cannot edit a completed RO.")
+            http_error(400, "Cannot edit a completed repair order", ErrorCode.RO_LOCKED_COMPLETED)
         
     job = db.query(Job).filter(Job.id == payload.job_id).first()
     if not job:
-        raise HTTPException(status_code=404, detail="Job not found.")
+        http_error(404, "Job not found", ErrorCode.NOT_FOUND)
     
     rec = ScheduleRecommendedJob(schedule_id=schedule_id, job_id=payload.job_id, job_title_snapshot=job.title, duration_minutes_snapshot=job.default_duration_minutes)
 
@@ -372,17 +373,17 @@ def delete_recommended_job(schedule_id: int, rec_id: int, db: Session = Depends(
     schedule = db.query(Schedule).filter(Schedule.id == schedule_id).first()
 
     if not schedule:
-        raise HTTPException(status_code=404, detail="RO not found.")
+        http_error(404, "Repair order not found", ErrorCode.NOT_FOUND)
     
     if current_user.role != "admin":
         if schedule.assigned_technician_id != current_user.id:
-            raise HTTPException(status_code=403, detail="Not allowed to edit this RO.")
+            http_error(403, "Not allowed to edit this repair order", ErrorCode.RO_NOT_ASSIGNED_TO_YOU)
         if schedule.status == "completed":
-            raise HTTPException(status_code=400, detail="Cannot edit a completed RO.")
+            http_error(400, "Cannot edit a completed repair order", ErrorCode.RO_LOCKED_COMPLETED)
 
     rec = db.query(ScheduleRecommendedJob).filter(ScheduleRecommendedJob.id == rec_id, ScheduleRecommendedJob.schedule_id == schedule_id).first()
     if not rec:
-        raise HTTPException(status_code=404, detail="Recommended job not found.")
+        http_error(404, "Recommended job not found", ErrorCode.NOT_FOUND)
     
     db.delete(rec)
     db.commit()

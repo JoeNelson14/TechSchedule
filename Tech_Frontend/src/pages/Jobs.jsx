@@ -3,6 +3,7 @@ import { useAuth } from "../auth/useAuth";
 import Modal from "../components/Modal";
 import { getJobs, createJob, updateJob, deleteJob } from "../api/jobApi";
 import AppNav from "../components/AppNav";
+import { notify } from "../utils/notify";
 
 // Form state for create/edit
 const emptyForm = {
@@ -86,7 +87,7 @@ const Jobs = () => {
       fetchJobs();
     } catch (err) {
       console.error("Create job failed:", err);
-      alert("Failed to create job template. Check console/network.");
+      notify.error("Failed to create job template. Check console/network.");
       setSaving(false);
     }
   };
@@ -107,7 +108,7 @@ const Jobs = () => {
       fetchJobs();
     } catch (err) {
       console.error("Update job failed:", err);
-      alert("Failed to update job template. Check console/network.");
+      notify.error("Failed to update job template. Check console/network.");
       setSaving(false);
     }
   };
@@ -124,7 +125,7 @@ const Jobs = () => {
       fetchJobs();
     } catch (err) {
       console.error("Delete job failed:", err);
-      alert("Failed to delete job template.");
+      notify.error("Failed to delete job template.");
     }
   };
 

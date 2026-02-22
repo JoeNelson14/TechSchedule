@@ -1,4 +1,5 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, HTTPException
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from app.routes import auth, schedules, jobs
 from app.core.database import Base, engine
@@ -13,6 +14,14 @@ app = FastAPI(
     version="1.0.0",
     description="Automotive scheduling application with role-based access control"
 )
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    if isinstance(exc.detail, dict) and "detail" in exc.detail and "code" in exc.detail:
+        payload = exc.detail
+    else:
+        payload = {"detail": str(exc.detail), "code": "INTERNAL"}
+    return JSONResponse(status_code=exc.status_code, content=payload)
 
 # Define the allowed origins for CORS
 origins = [

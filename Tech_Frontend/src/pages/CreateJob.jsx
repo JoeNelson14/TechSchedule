@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { createJob } from "../api/jobApi";
+import { notify } from "../utils/notify";
 
 const CreateJob = () => {
   const [title, setTitle] = useState("");
@@ -32,7 +33,7 @@ const CreateJob = () => {
     setTitle("");
     setDescription("");
     setAssignedTo("");
-    alert("Job created successfully!");
+    notify.success("Job created successfully!");
   };
 
   return (

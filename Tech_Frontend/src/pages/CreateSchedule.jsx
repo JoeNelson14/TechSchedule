@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { createSchedule } from "../api/schedules";
 import { getTechnicians } from "../api/users";
-import { getJobs } from "../api/jobApi"; // make sure you have this
+import { getJobs } from "../api/jobApi";
+import { notify } from "../utils/notify";
 
 const CreateSchedule = () => {
   const navigate = useNavigate();
@@ -101,7 +102,7 @@ const CreateSchedule = () => {
 
     try {
       if (!jobId) {
-        alert("Please select a job.");
+        notify.error("Please select a job template.");
         setSubmitting(false);
         return;
       }
@@ -131,7 +132,7 @@ const CreateSchedule = () => {
       navigate("/schedules");
     } catch (error) {
       console.error("Error creating schedule:", error);
-      alert("Failed to create schedule. Please check the console for details.");
+      notify.error("Failed to create schedule. Please check the console for details.");
     } finally {
       setSubmitting(false);
     }

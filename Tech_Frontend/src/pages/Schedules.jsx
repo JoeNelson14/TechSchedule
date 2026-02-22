@@ -1,29 +1,29 @@
 import { useEffect, useState } from "react";
-import {
-  getSchedules,
-  deleteSchedule,
-  acceptSchedule,
-  techUpdateSchedule,
-} from "../api/schedules";
+import { getSchedules, deleteSchedule, acceptSchedule, techUpdateSchedule } from "../api/schedules";
 import { useAuth } from "../auth/useAuth";
 import { useNavigate } from "react-router-dom";
 import Modal from "../components/Modal";
 import EditScheduleForm from "../components/EditScheduleForm";
 import AppNav from "../components/AppNav";
+import { notify } from "../utils/notify";
 
+// Define how many schedules to show per page
 const PAGE_SIZE = 10;
 
 const Schedules = () => {
   const { isAdmin, user } = useAuth();
   const navigate = useNavigate();
 
+  // State for schedules, loading status, currently editing schedule, filters, and pagination
   const [schedules, setSchedules] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingSchedule, setEditingSchedule] = useState(null);
 
+  // Filters
   const [statusFilter, setStatusFilter] = useState("");
   const [page, setPage] = useState(0);
 
+  // Fetch schedules from the API with current filters and pagination
   const fetchSchedules = async () => {
     setLoading(true);
     try {
@@ -32,6 +32,7 @@ const Schedules = () => {
         limit: PAGE_SIZE,
       };
 
+      // Only apply status filter if one is selected
       if (statusFilter) params.status = statusFilter;
 
       const data = await getSchedules(params);
@@ -52,6 +53,7 @@ const Schedules = () => {
   const handleDelete = async (id) => {
     if (!isAdmin) return;
 
+    // Confirm deletion with the user
     const ok = window.confirm("Are you sure you want to delete this schedule?");
     if (!ok) return;
 
@@ -60,7 +62,7 @@ const Schedules = () => {
       fetchSchedules();
     } catch (error) {
       console.error("Error deleting schedule:", error);
-      alert("Failed to delete schedule. Please try again.");
+      notify.error("Failed to delete schedule. Please try again.");
     }
   };
 
@@ -71,7 +73,7 @@ const Schedules = () => {
       fetchSchedules();
     } catch (err) {
       console.error("Accept failed:", err);
-      alert("Failed to accept this RO.");
+      notify.error("Failed to accept this RO.");
     }
   };
 
@@ -82,7 +84,7 @@ const Schedules = () => {
       fetchSchedules();
     } catch (err) {
       console.error("Failed to update RO:", err);
-      alert("Failed to update RO.");
+      notify.error("Failed to update RO.");
     }
   };
 
@@ -95,26 +97,17 @@ const Schedules = () => {
         <h1 className="text-2xl font-bold">Schedules</h1>
 
         {isAdmin && (
-          <button
-            className="bg-blue-600 text-white px-4 py-2 rounded"
-            onClick={() => navigate("/admin/create-schedule")}
-          >
-            Create Schedule
-          </button>
+          <button className="bg-blue-600 text-white px-4 py-2 rounded" onClick={() => navigate("/admin/create-schedule")}>Create Schedule</button>
         )}
       </div>
 
       {/* Filters */}
       <div className="flex items-center gap-3 mb-4">
         <label className="text-sm font-medium">Status</label>
-        <select
-          className="border rounded p-2"
-          value={statusFilter}
-          onChange={(e) => {
+        <select className="border rounded p-2" value={statusFilter} onChange={(e) => {
             setPage(0);
             setStatusFilter(e.target.value);
-          }}
-        >
+          }}>
           <option value="">All</option>
           <option value="active">Active</option>
           <option value="in_progress">In Progress</option>
@@ -235,14 +228,10 @@ const Schedules = () => {
       {/* Edit Modal (Admin only) */}
       {isAdmin && editingSchedule && (
         <Modal title={`Edit Schedule #${editingSchedule.id}`} onClose={() => setEditingSchedule(null)}>
-          <EditScheduleForm
-            schedule={editingSchedule}
-            onCancel={() => setEditingSchedule(null)}
-            onSaved={() => {
+          <EditScheduleForm schedule={editingSchedule} onCancel={() => setEditingSchedule(null)} onSaved={() => {
               setEditingSchedule(null);
               fetchSchedules();
-            }}
-/>
+            }}/>
         </Modal>
       )}
     </div>
