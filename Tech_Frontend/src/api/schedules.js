@@ -58,10 +58,9 @@ export const removeRecommendedJob = async (scheduleId, recId) => {
 }
 
 /**
- * Technician workflow (new lifecycle)
  * Status lifecycle:
  * active -> in_progress -> (approval -> repair) -> completed
- * Special rule: in_progress -> approval auto-completes if no recommended repairs.
+ * Special rule: in_progress -> completed allowed only if NO recommended repairs/jobs and primary is completed.
  */
 // Technician accepts an active schedule, moving it to in_progress
 export const acceptSchedule = async (id) => {
@@ -88,5 +87,26 @@ export const techUpdateSchedule = async (id, payload) => {
 // Get categorized schedules for dashboard view
 export const getDashboardSchedules = async (params) => {
   const response = await api.get("/schedules/dashboard", { params });
+  return response.data;
+}
+// Admin approves a schedule that's waiting for approval, moving it to repair
+export const approveSchedule = async (id) => {
+  const response = await api.post(`/schedules/${id}/approve`, null);
+  return response.data;
+}
+// Set the primary job as completed or not completed
+export const setPrimaryJobComplete = async (id, is_completed) => {
+  const response = await api.patch(`/schedules/${id}/jobs/primary`, { is_completed });
+  return response.data;
+}
+// Set a recommended job as completed or not completed
+export const setRecommendedJobComplete = async (scheduleId, recId, is_completed) => {
+  const response = await api.patch(`/schedules/${scheduleId}/recommended-jobs/${recId}/complete`, { is_completed });
+  return response.data;
+}
+
+// Get schedule events by schedule ID
+export const getScheduleEvents = async (scheduleId) => {
+  const response = await api.get(`/schedules/${scheduleId}/events`);
   return response.data;
 }

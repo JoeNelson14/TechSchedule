@@ -1,9 +1,16 @@
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from app.routes import auth, schedules, jobs
+
 from app.core.database import Base, engine
-from app.routes import users
+from app.routes import auth, schedules, jobs, users
+
+# ✅ Register all models with SQLAlchemy metadata BEFORE create_all
+from app.models.user import User  # noqa
+from app.models.job import Job  # noqa
+from app.models.schedule import Schedule  # noqa
+from app.models.schedule_recommended_job import ScheduleRecommendedJob  # noqa
+from app.models.schedule_event import ScheduleEvent  # noqa
 
 # Create the database tables based on the defined models
 Base.metadata.create_all(bind=engine)

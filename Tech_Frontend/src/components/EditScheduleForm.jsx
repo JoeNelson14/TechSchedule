@@ -29,6 +29,8 @@ const EditScheduleForm = ({ schedule, onSaved, onCancel }) => {
   const [assignedTechnicianId, setAssignedTechnicianId] = useState(schedule.assigned_technician_id ? String(schedule.assigned_technician_id) : "");
   const [notes, setNotes] = useState(schedule.notes || "");
 
+  const [vehicleVin, setVehicleVin] = useState(schedule.vehicle_vin || "");
+
   const [saving, setSaving] = useState(false);
  
   // Whenever the schedule prop changes (e.g. when editing a different schedule), update form fields
@@ -40,6 +42,7 @@ const EditScheduleForm = ({ schedule, onSaved, onCancel }) => {
     setStatus(schedule.status || "active");
     setAssignedTechnicianId(schedule.assigned_technician_id ? String(schedule.assigned_technician_id) : "");
     setNotes(schedule.notes || "");
+    setVehicleVin(schedule.vehicle_vin || "");
   }, [schedule]);
 
   // Load technicians for the dropdown
@@ -61,6 +64,14 @@ const EditScheduleForm = ({ schedule, onSaved, onCancel }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaving(true);
+    const vin = vehicleVin.trim().toUpperCase(); // Normalize VIN to uppercase and trim whitespace
+
+    // VIN validation: must be exactly 17 characters
+    if (vin.length !== 17) {
+      notify.error("VIN must be exactly 17 characters.");
+      setSaving(false);
+      return;
+    }
 
     try {
       // backend supports partial updates, so we send only editable fields
@@ -74,6 +85,7 @@ const EditScheduleForm = ({ schedule, onSaved, onCancel }) => {
           ? Number(assignedTechnicianId)
           : null,
         notes: notes || null,
+        vehicle_vin: vin,
       };
 
       await updateSchedule(schedule.id, payload);
@@ -88,31 +100,19 @@ const EditScheduleForm = ({ schedule, onSaved, onCancel }) => {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <input
-        className="border rounded p-2 w-full"
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        required
-      />
+      <input className="border rounded p-2 w-full" value={title} onChange={(e) => setTitle(e.target.value)} required/>
 
-      <textarea
-        className="border rounded p-2 w-full"
-        value={description}
-        onChange={(e) => setDescription(e.target.value)}
-        rows={3}
-        placeholder="Description (optional)"
-      />
+      <textarea className="border rounded p-2 w-full" value={description} onChange={(e) => setDescription(e.target.value)} rows={3} placeholder="Description (optional)"/>
+      
+      <div>
+        <label className="block text-sm font-medium mb-1">VIN</label>
+        <input className="border rounded p-2 w-full" value={vehicleVin} onChange={(e) => setVehicleVin(e.target.value.toUpperCase())} required minLength={17} maxLength={17} placeholder="VIN"/>
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div>
           <label className="block text-sm font-medium mb-1">Date/Time</label>
-          <input
-            className="border rounded p-2 w-full"
-            type="datetime-local"
-            value={scheduledDate}
-            onChange={(e) => setScheduledDate(e.target.value)}
-            required
-          />
+          <input className="border rounded p-2 w-full" type="datetime-local" value={scheduledDate} onChange={(e) => setScheduledDate(e.target.value)} required/>
         </div>
 
         <div>
@@ -127,8 +127,8 @@ const EditScheduleForm = ({ schedule, onSaved, onCancel }) => {
           <select className="border rounded p-2 w-full" value={status} onChange={(e) => setStatus(e.target.value)}>
             <option value="active">Active</option>
             <option value="in_progress">In Progress</option>
-            <option value="approval">Waiting for Approval</option>
-            <option value="repair">In Repair</option>
+            <option value="approval">Approval</option>
+            <option value="repair">Repair</option>
             <option value="completed">Completed</option>
           </select>
         </div>
@@ -149,9 +149,7 @@ const EditScheduleForm = ({ schedule, onSaved, onCancel }) => {
       <textarea className="border rounded p-2 w-full" value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} placeholder="Internal notes (optional)"/>
 
       <div className="flex items-center gap-3">
-        <button type="submit" disabled={saving} className="bg-blue-600 text-white px-4 py-2 rounded disabled:opacity-50">
-          {saving ? "Saving..." : "Save"}
-        </button>
+        <button type="submit" disabled={saving} className="bg-blue-600 text-white px-4 py-2 rounded disabled:opacity-50">{saving ? "Saving..." : "Save"}</button>
         <button type="button" onClick={onCancel} disabled={saving} className="border px-4 py-2 rounded">Cancel</button>
       </div>
     </form>

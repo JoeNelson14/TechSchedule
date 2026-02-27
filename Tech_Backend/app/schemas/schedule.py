@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from datetime import datetime
 from typing import List, Optional, Literal
 from app.schemas.recommended_job import RecommendedJobResponse
@@ -8,13 +8,16 @@ class ScheduleBase(BaseModel):
     job_id: int
     description: Optional[str] = None
 
+    # Customer info
     customer_name: str
     customer_phone: Optional[str] = None
     customer_email: Optional[str] = None
 
+    # Vehicle info
     vehicle_make: str
     vehicle_model: str
     vehicle_year: int
+    vehicle_vin: str = Field(min_length=17, max_length=17)
 
     scheduled_date: Optional[datetime] = None
     duration_hours: float | None = None
@@ -41,6 +44,7 @@ class ScheduleUpdate(BaseModel):
     vehicle_make: Optional[str] = None
     vehicle_model: Optional[str] = None
     vehicle_year: Optional[int] = None
+    vehicle_vin: str | None = Field(default=None, min_length=17, max_length=17)
 
     scheduled_date: Optional[datetime] = None
     duration_hours: float | None = None
@@ -49,6 +53,7 @@ class ScheduleUpdate(BaseModel):
     assigned_technician_id: Optional[int] = None
     notes: Optional[str] = None
     recommended_repairs: Optional[str] = None
+    job_description_snapshot: str | None = None
 
 # Update schedule details (technician only - limited fields)
 class ScheduleTechUpdate(BaseModel):
@@ -70,6 +75,15 @@ class ScheduleResponse(ScheduleBase):
     updated_at: Optional[datetime] = None
     recommended_repairs: Optional[str] = None
     recommended_jobs: List[RecommendedJobResponse] = []
+    vehicle_vin: str | None = None
+    job_description_snapshot: str | None = None
+
+    is_approved: bool = False
+    approved_by_id: int | None = None
+    approved_at: datetime | None = None
+
+    primary_job_completed: bool = False
+    primary_job_completed_at: datetime | None = None
 
     model_config = ConfigDict(from_attributes=True)
 

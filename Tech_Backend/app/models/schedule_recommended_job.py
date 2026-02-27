@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, ForeignKey, String, DateTime, func
+from sqlalchemy import Column, Integer, ForeignKey, String, DateTime, func, Text, Boolean
 from sqlalchemy.orm import relationship
 from app.core.database import Base
 
@@ -13,6 +13,11 @@ class ScheduleRecommendedJob(Base):
     # snapshot (important so history stays stable if job templates change)
     job_title_snapshot = Column(String, nullable=False)
     duration_minutes_snapshot = Column(Integer, nullable=False)
+    job_description_snapshot = Column(Text, nullable=True)
+
+    # Track if the recommended job has been completed, and when
+    is_compeleted = Column(Boolean, default=False, nullable=False)
+    completed_at = Column(DateTime, nullable=True)
 
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
 

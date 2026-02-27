@@ -3,6 +3,8 @@
 ############################
 .DS_Store
 Thumbs.db
+ehthumbs.db
+Desktop.ini
 
 .vscode/*
 !.vscode/extensions.json
@@ -14,6 +16,10 @@ Thumbs.db
 *.sln
 *.swp
 *.swo
+*.tmp
+*.bak
+*.orig
+*.rej
 
 ############################
 # Logs
@@ -34,7 +40,7 @@ __pycache__/
 *.pyo
 *.pyd
 
-# virtual environments (all common names)
+# virtual environments
 .venv/
 venv/
 env/
@@ -48,6 +54,17 @@ ENV/
 .ruff_cache/
 .coverage
 htmlcov/
+.hypothesis/
+.cache/
+
+############################
+# Python packaging / builds
+############################
+build/
+site/
+*.egg-info/
+pip-wheel-metadata/
+dist/
 
 ############################
 # Database (dev only)
@@ -62,10 +79,9 @@ htmlcov/
 # Node / Frontend
 ############################
 node_modules/
+.vite/
 dist/
 dist-ssr/
-.vite/
-.cache/
 
 ############################
 # Environment variables
@@ -75,7 +91,19 @@ dist-ssr/
 !.env.example
 
 ############################
-# Build / misc
+# FastAPI / runtime artifacts
+############################
+*.reload
+
+############################
+# Uploaded / generated files
+############################
+uploads/
+media/
+staticfiles/
+
+############################
+# Coverage / misc
 ############################
 coverage/
 *.local

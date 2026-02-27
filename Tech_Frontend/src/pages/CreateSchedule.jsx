@@ -8,9 +8,11 @@ import { notify } from "../utils/notify";
 const CreateSchedule = () => {
   const navigate = useNavigate();
 
+  // State for technicians and loading status
   const [technicians, setTechnicians] = useState([]);
   const [loadingTechs, setLoadingTechs] = useState(true);
 
+  // For job template selection
   const [jobs, setJobs] = useState([]);
   const [loadingJobs, setLoadingJobs] = useState(true);
 
@@ -20,21 +22,27 @@ const CreateSchedule = () => {
   // Optional override description (pre-filled from job template)
   const [description, setDescription] = useState("");
 
+  // Customer info
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
 
+  // Vehicle info
   const [vehicleMake, setVehicleMake] = useState("");
   const [vehicleModel, setVehicleModel] = useState("");
   const [vehicleYear, setVehicleYear] = useState("");
+  const [vehicleVin, setVehicleVin] = useState("");
 
+  // Schedule info
   const [scheduledDate, setScheduledDate] = useState("");
   const [durationHours, setDurationHours] = useState(1);
   const [status, setStatus] = useState("active");
 
+  // Assignment and notes
   const [assignedTechId, setAssignedTechId] = useState("");
   const [notes, setNotes] = useState("");
 
+  // Submission state
   const [submitting, setSubmitting] = useState(false);
 
   // Find selected job object
@@ -91,15 +99,40 @@ const CreateSchedule = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedJob]);
 
+  // Utility to convert datetime-local string to ISO format for backend
   const toIsoString = (datetimeLocal) => {
     if (!datetimeLocal) return null;
     return new Date(datetimeLocal).toISOString();
   };
 
+  // Handler for form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
+    const vin = vehicleVin.trim().toUpperCase(); // Normalize VIN to uppercase and trim whitespace
+    const phone = customerPhone.trim(); // Normalize phone by trimming whitespace
+    const email = customerEmail.trim().toLowerCase(); // Normalize email by trimming whitespace and converting to lowercase
+    console.log(phone, email);
+    // VIN validation: must be exactly 17 characters
+    if (vin.length !== 17) {
+      notify.error("VIN must be exactly 17 characters.");
+      setSubmitting(false);
+      return;
+    }
+    // Phone validation: must be 10 digits if provided
+    if (phone && !/^\d{10}$/.test(phone)) {
+      notify.error("Phone number must be 10 digits.");
+      setSubmitting(false);
+      return;
+    }
+    // Email validation: basic format check if provided
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      notify.error("Invalid email address.");
+      setSubmitting(false);
+      return;
+    }
 
+    // Basic validation
     try {
       if (!jobId) {
         notify.error("Please select a job template.");
@@ -113,12 +146,13 @@ const CreateSchedule = () => {
         description: description || null,
 
         customer_name: customerName,
-        customer_phone: customerPhone || null,
-        customer_email: customerEmail || null,
+        customer_phone: phone || null,
+        customer_email: email || null,
 
         vehicle_make: vehicleMake,
         vehicle_model: vehicleModel,
         vehicle_year: vehicleYear ? Number(vehicleYear) : null,
+        vehicle_vin: vin,
 
         scheduled_date: toIsoString(scheduledDate),
         duration_hours: Number(durationHours),
@@ -157,7 +191,7 @@ const CreateSchedule = () => {
               </option>
               {jobs.map((job) => (
                 <option key={job.id} value={job.id}>
-                  {job.title} ({job.default_duration_hours} hours)
+                  {job.title}
                 </option>
               ))}
             </select>
@@ -179,10 +213,11 @@ const CreateSchedule = () => {
         {/* Vehicle Info */}
         <section className="bg-white shadow rounded p-4 space-y-3">
           <h2 className="font-semibold">Vehicle</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
             <input className="border rounded p-2 w-full" placeholder="Make (e.g., Toyota)" value={vehicleMake} onChange={(e) => setVehicleMake(e.target.value)} required/>
             <input className="border rounded p-2 w-full" placeholder="Model (e.g., Camry)" value={vehicleModel} onChange={(e) => setVehicleModel(e.target.value)} required/>
             <input className="border rounded p-2 w-full" placeholder="Year (e.g., 2020)" type="number" value={vehicleYear} onChange={(e) => setVehicleYear(e.target.value)} min="1900" max="2100" required/>
+            <input className="border rounded p-2 w-full" placeholder="VIN" value={vehicleVin} onChange={(e) => setVehicleVin(e.target.value.toUpperCase())} required minLength={17} maxLength={17}/>
           </div>
         </section>
 
