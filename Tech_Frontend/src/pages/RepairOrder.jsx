@@ -36,6 +36,28 @@ const getAdvanceConfig = (status, isAdmin) => {
       return null;
   }
 };
+
+const CompletionToggle = ({ checked, onChange, label = "Mark Complete" }) => (
+  <button
+    type="button"
+    onClick={onChange}
+    className="mt-2 inline-flex items-center gap-2 text-sm text-gray-700"
+    aria-pressed={checked}
+  >
+    <span
+      className={`inline-flex h-5 w-5 items-center justify-center rounded-full border text-xs font-bold transition-colors ${
+        checked
+          ? "border-green-600 bg-green-500 text-white"
+          : "border-gray-300 bg-white text-gray-400"
+      }`}
+      aria-hidden="true"
+    >
+      ✓
+    </span>
+    <span>{label}</span>
+  </button>
+);
+
 const RepairOrder = () => {
   // Get RO number from URL params and auth info
   const { roId } = useParams();
@@ -173,7 +195,6 @@ const RepairOrder = () => {
     );
   }
 
-  const hasRecs = (ro.recommended_repairs?.trim?.() ? true : false) || ((ro.recommended_jobs?.length ?? 0) > 0);
 
   const canCompleteNow =
     !!ro.primary_job_completed &&
@@ -181,7 +202,7 @@ const RepairOrder = () => {
 
   const allJobsCompleted =
     ro.status === "repair" ? canCompleteNow :
-    ro.status === "in_progress" ? (!!ro.primary_job_completed && !hasRecs) :
+    ro.status === "in_progress" ? !!ro.primary_job_completed :
     true;
 
   
@@ -281,13 +302,13 @@ const RepairOrder = () => {
           <div className="text-xs text-gray-600 mt-1">Duration: {formatHours(ro.duration_hours)} hrs</div>
           <div className="text-sm text-gray-700 mt-3 whitespace-pre-line">{primaryDescription?.trim() ? primaryDescription : "—"}</div>
           {(ro.status === "repair" || ro.status === "in_progress") && (
-            <label className="mt-3 flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={!!ro.primary_job_completed} onChange={async (e) => {
-                await setPrimaryJobComplete(ro.id, e.target.checked);
+            <CompletionToggle
+              checked={!!ro.primary_job_completed}
+              onChange={async () => {
+                await setPrimaryJobComplete(ro.id, !ro.primary_job_completed);
                 await loadRo();
-              }} />
-              Mark Complete
-            </label>
+              }}
+            />
           )}
         </div>
       </div>
@@ -332,13 +353,13 @@ const RepairOrder = () => {
                 </div>
 
                 {canEdit && ro.status === "repair" && (
-                  <label className="mt-2 flex items-center gap-2 text-sm">
-                    <input type="checkbox" checked={!!rec.is_completed} onChange={async (e) => {
-                      await setRecommendedJobComplete(ro.id, rec.id, e.target.checked);
+                  <CompletionToggle
+                    checked={!!rec.is_completed}
+                    onChange={async () => {
+                      await setRecommendedJobComplete(ro.id, rec.id, !rec.is_completed);
                       await loadRo();
-                    }} />
-                    Mark Complete
-                  </label>
+                    }}
+                  />
                 )}
 
                 {canEdit && ro.status !== "repair" && (
