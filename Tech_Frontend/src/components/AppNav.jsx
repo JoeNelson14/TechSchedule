@@ -13,27 +13,15 @@ export default function AppNav() {
     <header className="bg-white border-b">
       <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <span className="font-bold text-gray-900">TechSchedule</span>
-
           <nav className="flex items-center gap-2 text-sm">
-            <NavLink to="/" className={linkClass}>Home</NavLink>
+            {isAdmin && <NavLink to="/admin" className={linkClass}>Dashboard</NavLink>}
+            {isTech && <NavLink to="/technician" className={linkClass}>Dashboard</NavLink>}
 
-            {/* Common */}
             <NavLink to="/schedules" className={linkClass}>Schedules</NavLink>
-
-            {/* Admin-only */}
-            {isAdmin && (
-              <>
-                <NavLink to="/admin" className={linkClass}>Dashboard</NavLink>
-                <NavLink to="/jobs" className={linkClass}>Service Catalog</NavLink>
-              </>
-            )}
-
-            {/* Technician-only */}
-            {isTech && (
-              <NavLink to="/technician" className={linkClass}>Dashboard</NavLink>
-            )}
+            {isAdmin && <NavLink to="/jobs" className={linkClass}>Service Catalog</NavLink>}
           </nav>
+
+          <NavLink to="/" className="font-bold text-gray-900 hover:text-blue-700">TechSchedule</NavLink>
         </div>
 
         <div className="flex items-center gap-3">
