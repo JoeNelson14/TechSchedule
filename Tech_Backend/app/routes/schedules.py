@@ -2,8 +2,9 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import func
-from typing import List
+from typing import List, Dict, Any
 from datetime import datetime
+import re
 
 from app.core.time import utcnow
 from app.core.database import get_db
@@ -129,6 +130,52 @@ def schedule_to_response(schedule: Schedule) -> ScheduleResponse:
         job_description_snapshot=schedule.job_description_snapshot,
     )
 
+
+
+def extract_int_from_note(note: str | None, pattern: str) -> int | None:
+    if not note:
+        return None
+    m = re.search(pattern, note)
+    if not m:
+        return None
+    try:
+        return int(m.group(1))
+    except Exception:
+        return None
+
+
+def map_event_response(event: ScheduleEvent, user_lookup: Dict[int, str], rec_job_lookup: Dict[int, dict], job_lookup: Dict[int, str]) -> ScheduleEventResponse:
+    note = event.note or ""
+    rec_id = extract_int_from_note(note, r"Recommended job id\s+(\d+)")
+    job_id = extract_int_from_note(note, r"job id\s+(\d+)")
+
+    decision = None
+    if event.event_type == "recommended_job_approved":
+        decision = "approved"
+    elif event.event_type == "recommended_job_rejected":
+        decision = "rejected"
+
+    job_title = None
+    if rec_id is not None and rec_id in rec_job_lookup:
+        job_title = rec_job_lookup[rec_id].get("job_title_snapshot")
+    elif job_id is not None:
+        job_title = job_lookup.get(job_id)
+
+    return ScheduleEventResponse(
+        id=event.id,
+        schedule_id=event.schedule_id,
+        actor_id=event.actor_id,
+        actor_name=user_lookup.get(event.actor_id) if event.actor_id is not None else None,
+        job_title=job_title,
+        recommended_job_id=rec_id,
+        recommendation_decision=decision,
+        event_type=event.event_type,
+        from_status=event.from_status,
+        to_status=event.to_status,
+        note=event.note,
+        created_at=event.created_at,
+    )
+
 # Gets dashboard schedules categorized by status for the current technician (active_all, in_progress_mine, approval_mine, repair_mine, completed_mine)
 @router.get("/dashboard", response_model=DashboardSchedulesResponse)
 def get_dashboard_schedules(db: Session = Depends(get_db), current_user: User = Depends(get_current_user), limit: int = Query(12, ge=1, le=50)):
@@ -209,7 +256,6 @@ def get_schedules_by_date_range(start_date: datetime, end_date: datetime, db: Se
 def get_schedule_by_ro_number(ro_number: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     # Validate that the schedule exists
     db_schedule = db.query(Schedule).options(selectinload(Schedule.recommended_jobs)).filter(Schedule.ro_number == ro_number).first()
-    print("DB URL:", db.get_bind().engine.url)
     if not db_schedule:
         http_error(404, "Repair order not found.", ErrorCode.RO_NOT_ACTIVE)
 
@@ -227,7 +273,7 @@ def get_schedule_by_ro_number(ro_number: int, db: Session = Depends(get_db), cur
 # Get schedule events
 @router.get("/{schedule_id}/events", response_model=List[ScheduleEventResponse])
 def get_schedule_events(schedule_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user),):
-    s = db.query(Schedule).filter(Schedule.id == schedule_id).first()
+    s = db.query(Schedule).options(selectinload(Schedule.recommended_jobs)).filter(Schedule.id == schedule_id).first()
     if not s:
         http_error(404, "Repair order not found", ErrorCode.NOT_FOUND)
 
@@ -237,7 +283,27 @@ def get_schedule_events(schedule_id: int, db: Session = Depends(get_db), current
             http_error(403, "Access denied", ErrorCode.FORBIDDEN)
 
     events = db.query(ScheduleEvent).filter(ScheduleEvent.schedule_id == schedule_id).order_by(ScheduleEvent.created_at.asc()).all()
-    return events
+
+    user_ids = {e.actor_id for e in events if e.actor_id is not None}
+    users = db.query(User).filter(User.id.in_(user_ids)).all() if user_ids else []
+    user_lookup = {u.id: u.email for u in users}
+
+    rec_job_lookup = {
+        rec.id: {"job_id": rec.job_id, "job_title_snapshot": rec.job_title_snapshot}
+        for rec in (s.recommended_jobs or [])
+    }
+
+    job_ids = {rec["job_id"] for rec in rec_job_lookup.values() if rec.get("job_id") is not None}
+    extra_job_ids = set()
+    for e in events:
+        parsed_job_id = extract_int_from_note(e.note, r"job id\s+(\d+)")
+        if parsed_job_id is not None:
+            extra_job_ids.add(parsed_job_id)
+    job_ids.update(extra_job_ids)
+    jobs = db.query(Job).filter(Job.id.in_(job_ids)).all() if job_ids else []
+    job_lookup = {j.id: j.title for j in jobs}
+
+    return [map_event_response(e, user_lookup, rec_job_lookup, job_lookup) for e in events]
 
 # Get a single schedule by ID
 @router.get("/{schedule_id}", response_model=ScheduleResponse)
@@ -554,10 +620,39 @@ def delete_recommended_job(schedule_id: int, rec_id: int, db: Session = Depends(
     db.refresh(db_schedule)
     return schedule_to_response(db_schedule)
 
+@router.patch("/{schedule_id}/recommended-jobs/{rec_id}/approval", response_model=ScheduleResponse)
+def set_recommended_job_approval(schedule_id: int, rec_id: int, payload: dict, db: Session = Depends(get_db), current_user: User = Depends(require_admin)):
+    db_schedule = db.query(Schedule).filter(Schedule.id == schedule_id).first()
+    if not db_schedule:
+        http_error(404, "Repair order not found", ErrorCode.NOT_FOUND)
+
+    rec = db.query(ScheduleRecommendedJob).filter(ScheduleRecommendedJob.id == rec_id, ScheduleRecommendedJob.schedule_id == schedule_id).first()
+    if not rec:
+        http_error(404, "Recommended job not found", ErrorCode.NOT_FOUND)
+
+    decision = (payload or {}).get("decision")
+    if decision not in {"approved", "rejected"}:
+        http_error(400, "decision must be 'approved' or 'rejected'", ErrorCode.VALIDATION)
+
+    event_type = "recommended_job_approved" if decision == "approved" else "recommended_job_rejected"
+    log_ro_event(
+        db,
+        db_schedule,
+        current_user,
+        event_type,
+        from_status=status_value(db_schedule),
+        to_status=status_value(db_schedule),
+        note=f"Recommended job id {rec_id} marked {decision} by admin id: {current_user.id}",
+    )
+
+    db.flush()
+    db.expire(db_schedule, ["recommended_jobs"])
+    db.refresh(db_schedule)
+    return schedule_to_response(db_schedule)
+
 @router.patch("/{schedule_id}/recommended-jobs/{rec_id}/complete", response_model=ScheduleResponse)
 def set_recommended_job_complete(schedule_id: int, rec_id: int, payload: dict, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     db_schedule = db.query(Schedule).filter(Schedule.id == schedule_id).first()
-    print("DB URL:", db.get_bind().engine.url)
     # Validate schedule exists
     if not db_schedule:
         http_error(404, "Repair order not found", ErrorCode.NOT_FOUND)
@@ -583,7 +678,6 @@ def set_recommended_job_complete(schedule_id: int, rec_id: int, payload: dict, d
     # Update the recommended job completion status and timestamp
     if "is_completed" not in payload:
         http_error(400, "Missing 'is_completed' in request body", ErrorCode.VALIDATION)
-    raw = payload["is_completed"]
 
     is_completed = parse_bool(payload["is_completed"], "is_completed")
     rec.is_completed = is_completed
