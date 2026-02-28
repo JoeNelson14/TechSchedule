@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
+import { FaThumbsDown, FaThumbsUp } from "react-icons/fa";
 import AppNav from "../components/AppNav";
 import {
   getScheduleByRoNumber,
@@ -16,17 +17,30 @@ import {
 import { getJobs } from "../api/jobApi";
 import { useAuth } from "../auth/useAuth";
 
+// Convert minute values returned by the backend into hour values for display.
 const minutesToHours = (m) => (m == null ? null : Number(m) / 60);
+
+// Keep displayed hour values consistent with a single decimal place.
 const formatHours = (h) => {
   if (h == null || Number.isNaN(Number(h))) return "-";
   return Number(h).toFixed(1);
 };
+
+// Show a dash for empty values to keep UI rows aligned and readable.
 const valueOrDash = (v) => {
   if (v == null) return "—";
   const s = String(v).trim();
   return s.length ? s : "—";
 };
 
+// Reuse the same phone format shown in create flow for read-only display.
+const formatPhoneDisplay = (value) => {
+  const digits = String(value ?? "").replace(/\D/g, "").slice(0, 10);
+  if (digits.length !== 10) return valueOrDash(value);
+  return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`;
+};
+
+// Define next-step button behavior by current status and role.
 const getAdvanceConfig = (status, isAdmin) => {
   switch (status) {
     case "active":
@@ -43,6 +57,7 @@ const getAdvanceConfig = (status, isAdmin) => {
   }
 };
 
+// Compact checkmark toggle used for primary/recommended completion tracking.
 const CompletionToggle = ({ checked, onChange }) => (
   <button type="button" onClick={onChange} className="mt-2 inline-flex items-center" aria-pressed={checked}>
     <span
@@ -60,6 +75,7 @@ const RepairOrder = () => {
   const { roId } = useParams();
   const { isAdmin, user } = useAuth();
 
+  // Page-level state for RO data and background loading flags.
   const [ro, setRo] = useState(null);
   const [loading, setLoading] = useState(true);
   const [jobQuery, setJobQuery] = useState("");
@@ -69,12 +85,14 @@ const RepairOrder = () => {
   const [events, setEvents] = useState([]);
   const [loadingEvents, setLoadingEvents] = useState(false);
 
+  // Allow edits only for admins or assigned technician while not completed.
   const canEdit = useMemo(() => {
     if (!ro || ro.status === "completed") return false;
     if (isAdmin) return true;
     return ro.assigned_technician_id != null && Number(ro.assigned_technician_id) === Number(user?.id);
   }, [ro, isAdmin, user]);
 
+  // Reduce event history into latest approval decision per recommended job.
   const recommendationDecisions = useMemo(() => {
     const map = {};
     events.forEach((e) => {
@@ -85,6 +103,7 @@ const RepairOrder = () => {
     return map;
   }, [events]);
 
+  // Shared refresh helper to reload RO details and its event timeline.
   const loadRo = async () => {
     setLoading(true);
     try {
@@ -107,6 +126,7 @@ const RepairOrder = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roId]);
 
+  // Debounced catalog lookup for recommended job search.
   useEffect(() => {
     const t = setTimeout(async () => {
       if (!jobQuery.trim()) {
@@ -124,6 +144,7 @@ const RepairOrder = () => {
     return () => clearTimeout(t);
   }, [jobQuery]);
 
+  // Advance RO through lifecycle states based on status transition config.
   const handleAdvanceStatus = async () => {
     if (!ro) return;
     const cfg = getAdvanceConfig(ro.status, isAdmin);
@@ -144,6 +165,7 @@ const RepairOrder = () => {
     }
   };
 
+  // Add selected catalog job as a recommended job on the current RO.
   const handleAddJob = async (jobId) => {
     if (!ro) return;
     await addRecommendedJob(ro.id, { job_id: jobId });
@@ -152,12 +174,14 @@ const RepairOrder = () => {
     setJobResults([]);
   };
 
+  // Remove an existing recommended job from the RO.
   const handleRemoveJob = async (recId) => {
     if (!ro) return;
     await removeRecommendedJob(ro.id, recId);
     await loadRo();
   };
 
+  // Admin-only approve/reject interaction for recommended jobs.
   const handleRecommendationDecision = async (recId, decision) => {
     if (!ro || !isAdmin) return;
     await setRecommendedJobApproval(ro.id, recId, decision);
@@ -171,6 +195,7 @@ const RepairOrder = () => {
     return <div className="max-w-5xl mx-auto px-4 py-6"><AppNav /><div className="mt-6">RO not found.</div></div>;
   }
 
+  // Completion gate checks for status transition button.
   const canCompleteNow = !!ro.primary_job_completed && (ro.recommended_jobs?.every((j) => !!j.is_completed) ?? true);
   const allJobsCompleted = ro.status === "repair" ? canCompleteNow : ro.status === "in_progress" ? !!ro.primary_job_completed : true;
   const cfg = getAdvanceConfig(ro.status, isAdmin);
@@ -197,7 +222,7 @@ const RepairOrder = () => {
         <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="border rounded p-4 text-sm text-gray-700">
             <div><span className="text-gray-500">Name:</span> {valueOrDash(ro.customer_name)}</div>
-            <div className="mt-1"><span className="text-gray-500">Phone:</span> {valueOrDash(ro.customer_phone)}</div>
+            <div className="mt-1"><span className="text-gray-500">Phone:</span> {formatPhoneDisplay(ro.customer_phone)}</div>
             <div className="mt-1"><span className="text-gray-500">Email:</span> {valueOrDash(ro.customer_email)}</div>
           </div>
           <div className="border rounded p-4 text-sm text-gray-700">
@@ -255,8 +280,12 @@ const RepairOrder = () => {
                   <div className="flex items-start gap-3">
                     {isAdmin && (
                       <div className="flex items-center gap-2 mt-1">
-                        <button type="button" className={`text-lg ${decision === "approved" ? "text-green-600" : "text-gray-400"}`} onClick={() => handleRecommendationDecision(rec.id, "approved")}>👍</button>
-                        <button type="button" className={`text-lg ${decision === "rejected" ? "text-red-600" : "text-gray-400"}`} onClick={() => handleRecommendationDecision(rec.id, "rejected")}>👎</button>
+                        <button type="button" aria-label="Approve recommended job" className={`${decision === "approved" ? "text-green-600" : "text-gray-400"}`} onClick={() => handleRecommendationDecision(rec.id, "approved")}>
+                          <FaThumbsUp className="h-5 w-5" />
+                        </button>
+                        <button type="button" aria-label="Reject recommended job" className={`${decision === "rejected" ? "text-red-600" : "text-gray-400"}`} onClick={() => handleRecommendationDecision(rec.id, "rejected")}>
+                          <FaThumbsDown className="h-5 w-5" />
+                        </button>
                       </div>
                     )}
 
