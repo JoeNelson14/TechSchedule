@@ -236,21 +236,11 @@ const RepairOrder = () => {
   };
 
   if (loading) {
-    return (
-      <div className="max-w-5xl mx-auto px-4 py-6">
-        <AppNav />
-        <div className="mt-6">Loading RO...</div>
-      </div>
-    );
+    return <div className="max-w-5xl mx-auto px-4 py-6"><AppNav /><div className="mt-6">Loading RO...</div></div>;
   }
 
   if (!ro) {
-    return (
-      <div className="max-w-5xl mx-auto px-4 py-6">
-        <AppNav />
-        <div className="mt-6">RO not found.</div>
-      </div>
-    );
+    return <div className="max-w-5xl mx-auto px-4 py-6"><AppNav /><div className="mt-6">RO not found.</div></div>;
   }
 
   // Completion gate checks for status transition button.
