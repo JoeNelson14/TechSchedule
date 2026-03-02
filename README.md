@@ -1,3 +1,4 @@
+HEAD
 # TechSchedule
 
 TechSchedule is a full-stack application with:
@@ -48,3 +49,6 @@ This repository includes `render.yaml` for Blueprint-based deploys.
 - For deployment-specific dependency references:
   - Backend: `Tech_Backend/requirements.txt`
   - Frontend build requirements: `Tech_Frontend/requirements.txt`
+
+# TechSchedule
+93d6e2da790ad6e8243d67d517a18f37cf05f101
