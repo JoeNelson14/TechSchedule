@@ -39,23 +39,29 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
+*.py[cod]
+*$py.class
 
-# virtual environments
+# Virtual environments
 .venv/
 venv/
 env/
 ENV/
 
 ############################
-# Python tooling caches
+# Python tooling caches / reports
 ############################
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
 .coverage
+.coverage.*
 htmlcov/
 .hypothesis/
 .cache/
+.pyre/
+.tox/
+.nox/
 
 ############################
 # Python packaging / builds
@@ -67,7 +73,7 @@ pip-wheel-metadata/
 dist/
 
 ############################
-# Database (dev only)
+# Database artifacts
 ############################
 *.db
 *.sqlite3
@@ -82,28 +88,26 @@ node_modules/
 .vite/
 dist/
 dist-ssr/
+*.tsbuildinfo
 
 ############################
-# Environment variables
+# Environment variables / local overrides
 ############################
 .env
 .env.*
 !.env.example
+*.local
 
 ############################
-# FastAPI / runtime artifacts
+# Runtime / generated uploads
 ############################
 *.reload
-
-############################
-# Uploaded / generated files
-############################
 uploads/
 media/
 staticfiles/
 
 ############################
-# Coverage / misc
+# Misc artifacts
 ############################
 coverage/
-*.local
+.python-version
