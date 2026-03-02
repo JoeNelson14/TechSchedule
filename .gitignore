@@ -111,3 +111,11 @@ staticfiles/
 ############################
 coverage/
 .python-version
+
+############################
+# Deployment / hosting
+############################
+.render/
+.vercel/
+.netlify/
+

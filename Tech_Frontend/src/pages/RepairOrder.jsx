@@ -274,16 +274,20 @@ const RepairOrder = () => {
       <div className="modern-card p-5 rise-in">
         <h2 className="text-lg font-semibold">Customer & Vehicle</h2>
         <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="border border-slate-200 rounded-xl p-4 text-sm text-slate-700 text-center flex flex-col items-center justify-center">
-            <div><span className="text-slate-500">Name:</span> {valueOrDash(ro.customer_name)}</div>
-            <div className="mt-1"><span className="text-slate-500">Phone:</span> {formatPhoneDisplay(ro.customer_phone)}</div>
-            <div className="mt-1"><span className="text-slate-500">Email:</span> {valueOrDash(ro.customer_email)}</div>
+          <div className="border border-slate-200 rounded-xl p-4 text-sm text-slate-700 flex justify-center">
+            <div className="w-full max-w-xs text-left">
+              <div><span className="text-slate-500">Name:</span> {valueOrDash(ro.customer_name)}</div>
+              <div className="mt-1"><span className="text-slate-500">Phone:</span> {formatPhoneDisplay(ro.customer_phone)}</div>
+              <div className="mt-1"><span className="text-slate-500">Email:</span> {valueOrDash(ro.customer_email)}</div>
+            </div>
           </div>
-          <div className="border border-slate-200 rounded-xl p-4 text-sm text-slate-700 text-center flex flex-col items-center justify-center">
-            <div><span className="text-slate-500">Make:</span> {valueOrDash(ro.vehicle_make)}</div>
-            <div className="mt-1"><span className="text-slate-500">Model:</span> {valueOrDash(ro.vehicle_model)}</div>
-            <div className="mt-1"><span className="text-slate-500">Year:</span> {valueOrDash(ro.vehicle_year)}</div>
-            <div className="mt-1"><span className="text-slate-500">VIN:</span> {valueOrDash(ro.vehicle_vin)}</div>
+          <div className="border border-slate-200 rounded-xl p-4 text-sm text-slate-700 flex justify-center">
+            <div className="w-full max-w-xs text-left">
+              <div><span className="text-slate-500">Make:</span> {valueOrDash(ro.vehicle_make)}</div>
+              <div className="mt-1"><span className="text-slate-500">Model:</span> {valueOrDash(ro.vehicle_model)}</div>
+              <div className="mt-1"><span className="text-slate-500">Year:</span> {valueOrDash(ro.vehicle_year)}</div>
+              <div className="mt-1"><span className="text-slate-500">VIN:</span> {valueOrDash(ro.vehicle_vin)}</div>
+            </div>
           </div>
         </div>
       </div>
