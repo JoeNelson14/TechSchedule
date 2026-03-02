@@ -1,0 +1,8 @@
+# Frontend build/runtime requirements for Render static site deploys
+# Install Node 20+ and npm 10+ before running commands below.
+node>=20
+npm>=10
+
+# Build commands
+npm ci
+npm run build
