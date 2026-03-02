@@ -48,7 +48,4 @@ This repository includes `render.yaml` for Blueprint-based deploys.
 - Keep generated artifacts out of git using the root `.gitignore`.
 - For deployment-specific dependency references:
   - Backend: `Tech_Backend/requirements.txt`
-  - Frontend build requirements: `Tech_Frontend/requirements.txt`
 
-# TechSchedule
-93d6e2da790ad6e8243d67d517a18f37cf05f101
