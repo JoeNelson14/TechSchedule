@@ -52,7 +52,7 @@ app.include_router(schedules.router)
 app.include_router(jobs.router)
 app.include_router(users.router)
 
-# Health check endpoint
+# Health check endpoint df
 @app.get("/")
 def root():
     return {
