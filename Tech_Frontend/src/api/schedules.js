@@ -110,3 +110,8 @@ export const getScheduleEvents = async (scheduleId) => {
   const response = await api.get(`/schedules/${scheduleId}/events`);
   return response.data;
 }
+// Admin marks a recommended job as approved/rejected
+export const setRecommendedJobApproval = async (scheduleId, recId, decision) => {
+  const response = await api.patch(`/schedules/${scheduleId}/recommended-jobs/${recId}/approval`, { decision });
+  return response.data;
+};
