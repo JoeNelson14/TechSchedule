@@ -1,4 +1,3 @@
-HEAD
 # TechSchedule
 
 TechSchedule is a full-stack application with:
@@ -42,6 +41,7 @@ This repository includes `render.yaml` for Blueprint-based deploys.
   - `SECRET_KEY`
   - `ACCESS_TOKEN_EXPIRE_MINUTES` (optional; defaults in blueprint to `60`)
   - `CORS_ORIGINS` (comma-separated frontend origins, e.g. `https://your-frontend.onrender.com`)
+  - `CORS_ORIGIN_REGEX` (optional regex for preview/static origins, e.g. `^https://.*\.onrender\.com$`)
 - `techschedule-frontend`
   - `VITE_API_BASE_URL` (public URL of `techschedule-api`)
   - `VITE_API_URL` (also supported as an alternative env var name)
@@ -50,4 +50,4 @@ This repository includes `render.yaml` for Blueprint-based deploys.
 - Keep generated artifacts out of git using the root `.gitignore`.
 - For deployment-specific dependency references:
   - Backend: `Tech_Backend/requirements.txt`
-
+  - Frontend build requirements: `Tech_Frontend/requirements.txt`
