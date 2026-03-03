@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Request, HTTPException
+import os
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -30,12 +31,19 @@ async def http_exception_handler(request: Request, exc: HTTPException):
         payload = {"detail": str(exc.detail), "code": "INTERNAL"}
     return JSONResponse(status_code=exc.status_code, content=payload)
 
-# Define the allowed origins for CORS
-origins = [
-    "http://localhost:5173",
-    "http://localhost:3000",
-    "http://127.0.0.1:5173",
-]
+# Define the allowed origins for CORS.
+# Production origins can be injected via CORS_ORIGINS="https://frontend.example.com,https://other.example.com"
+def _get_cors_origins() -> list[str]:
+    configured = os.getenv("CORS_ORIGINS", "")
+    parsed = [o.strip() for o in configured.split(",") if o.strip()]
+    defaults = [
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:5173",
+    ]
+    return parsed or defaults
+
+origins = _get_cors_origins()
 
 # Set up CORS middleware to allow requests from the specified origins
 app.add_middleware(

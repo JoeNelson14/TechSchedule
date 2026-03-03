@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { login } from "../api/auth";
+import { notify } from "../utils/notify";
 import { useAuth } from "../auth/useAuth";
 import { useNavigate } from "react-router-dom";
 
@@ -22,8 +23,17 @@ const Login = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const data = await login(email, password);
-    loginUser(data.access_token);
+    try {
+      const data = await login(email, password);
+      if (!data?.access_token) {
+        notify.error("Login response did not include an access token.");
+        return;
+      }
+      loginUser(data.access_token);
+    } catch (error) {
+      const msg = error?.response?.data?.detail || "Login failed. Please verify API URL and credentials.";
+      notify.error(msg);
+    }
   };
 
   return (
