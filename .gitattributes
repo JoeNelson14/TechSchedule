@@ -1,0 +1,3 @@
+# Ensure text files are always treated as text in diffs/merges.
+*.txt text eol=lf
+Tech_Backend/requirements.txt text eol=lf

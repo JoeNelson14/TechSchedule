@@ -2,8 +2,14 @@ import axios from 'axios';
 import { notify } from '../utils/notify';
 
 // Create an Axios instance with the base URL from environment variables
+// Support both legacy and Render env var names for API base URL.
+const resolvedApiBaseUrl =
+  import.meta.env.VITE_API_URL ||
+  import.meta.env.VITE_API_BASE_URL ||
+  "http://localhost:8000";
+
 const axiosApi = axios.create({
-  baseURL: import.meta.env.VITE_API_URL,
+  baseURL: resolvedApiBaseUrl,
 });
 
 // Request interceptor to add the access token to headers
