@@ -15,6 +15,8 @@ services:
         value: "60"
       - key: CORS_ORIGINS
         sync: false
+      - key: CORS_ORIGIN_REGEX
+        value: "^https://.*\\.onrender\\.com$"
 
   - type: web
     name: techschedule-frontend
