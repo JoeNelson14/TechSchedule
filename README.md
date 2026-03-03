@@ -41,8 +41,10 @@ This repository includes `render.yaml` for Blueprint-based deploys.
   - `DATABASE_URL` (Render PostgreSQL internal connection string)
   - `SECRET_KEY`
   - `ACCESS_TOKEN_EXPIRE_MINUTES` (optional; defaults in blueprint to `60`)
+  - `CORS_ORIGINS` (comma-separated frontend origins, e.g. `https://your-frontend.onrender.com`)
 - `techschedule-frontend`
   - `VITE_API_BASE_URL` (public URL of `techschedule-api`)
+  - `VITE_API_URL` (also supported as an alternative env var name)
 
 ## Notes
 - Keep generated artifacts out of git using the root `.gitignore`.
